@@ -62,7 +62,7 @@ function TradeForm() {
         console.log("Submitting payload:", payload);
 
         // Update the fetch URL to your Elastic Beanstalk URL
-        fetch("https://StockActionsBackend-prod-env.eba-3qpjzrme.eu-north-1.elasticbeanstalk.com/api/trades", {
+        fetch(`${process.env.REACT_APP_API_URL}/trades`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload)
