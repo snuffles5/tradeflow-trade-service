@@ -1,11 +1,11 @@
 # app/routes/trades.py
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from ..database import db
 from ..models import Trade
 from ..schemas import TradeSchema
-from datetime import date
 
 trades_bp = Blueprint("trades_bp", __name__)
+
 
 @trades_bp.route("/trades", methods=["POST"])
 def create_trade():
@@ -14,6 +14,7 @@ def create_trade():
     try:
         data = trade_schema.load(request.json)  # validation
     except Exception as e:
+        current_app.logger.error(f"Validation error: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
     # Construct and save the Trade object
@@ -31,6 +32,7 @@ def create_trade():
     db.session.add(new_trade)
     db.session.commit()
 
+    current_app.logger.info(f"Trade created with ID: {new_trade.id}")
     return jsonify({"message": "Trade created", "trade_id": new_trade.id}), 201
 
 
@@ -53,4 +55,5 @@ def list_trades():
             "created_at": t.created_at.isoformat(),
             "updated_at": t.updated_at.isoformat()
         })
+    current_app.logger.info("Fetched all trades")
     return jsonify(results), 200
