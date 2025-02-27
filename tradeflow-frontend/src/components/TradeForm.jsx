@@ -55,14 +55,14 @@ function TradeForm() {
             quantity: parseFloat(formData.quantity),
             pricePerUnit: parseFloat(formData.pricePerUnit),
             date: dateToUse,
-            stopLoss: parseFloat(formData.stopLoss)
+            stopLoss: parseFloat(formData.stopLoss) || 0
         };
 
         // Log the payload for debugging
         console.log("Submitting payload:", payload);
 
         // Update the fetch URL to your Elastic Beanstalk URL
-        fetch("https://<YOUR_EB_URL>/api/trades", {
+        fetch("https://StockActionsBackend-prod-env.eba-3qpjzrme.eu-north-1.elasticbeanstalk.com/api/trades", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload)

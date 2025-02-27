@@ -1,70 +1,198 @@
-# Getting Started with Create React App
+# TradeFlow (Frontend + Backend)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This repository contains:
 
-## Available Scripts
+1. A **React** frontend (the “tradeflow” React app).
+2. A **Python/Flask** backend (the “tradeflow-backend”) that uses SQLAlchemy, MySQL, etc.
 
-In the project directory, you can run:
+## Table of Contents
 
-### `npm start`
+1. [Prerequisites](#prerequisites)
+2. [Project Structure](#project-structure)
+3. [Local Setup](#local-setup)
+   - [Clone the Repo](#clone-the-repo)
+   - [Frontend Setup](#frontend-setup)
+   - [Backend Setup](#backend-setup)
+4. [Running the Apps Locally](#running-the-apps-locally)
+   - [Starting the React Frontend](#starting-the-react-frontend)
+   - [Starting the Flask Backend](#starting-the-flask-backend)
+   - [Testing](#testing)
+5. [Common Issues & Troubleshooting](#common-issues--troubleshooting)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 1. Prerequisites
 
-### `npm test`
+To run both the **React frontend** and the **Python backend** locally, you need:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Node.js** (14 or higher recommended) and **npm** (or yarn)
+   - Check by running `node -v` and `npm -v` in your terminal.
+- **Python 3.8+**
+   - Check by running `python --version`.
+- **Pip** (comes with Python)
+   - Check by running `pip --version`.
+- **MySQL** (optional if you want to mirror production; otherwise you can use SQLite):
+   - On macOS, you can install via Homebrew:
+     ```bash
+     brew install mysql
+     ```
+     or
+     ```bash
+     brew install mysql-client
+     ```
+   - Then start MySQL (e.g., `mysql.server start` on macOS) and create a local DB:
+     ```sql
+     CREATE DATABASE tradeflow;
+     ```
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 2. Project Structure
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+A typical structure if both frontend and backend are in the same repository might look like:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```
+tradeflow/
+  ├─ tradeflow-frontend/              # React frontend
+  │   ├─ package.json
+  │   ├─ src/
+  │   └─ ...
+  ├─ tradeflow-backend/      # Python/Flask backend
+  │   ├─ app/
+  │   ├─ requirements.txt
+  │   ├─ runtime.txt
+  │   └─ ...
+  └─ README.md               # This file
+```
 
-### `npm run eject`
+(Your actual structure may vary slightly.)
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 3. Local Setup
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### A. Clone the Repo
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+git clone https://github.com/yourusername/yourrepo.git
+cd yourrepo
+```
 
-## Learn More
+### B. Frontend Setup
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. **Install Node & npm** (if not already installed).
+   - For macOS/Linux, you can use [nvm](https://github.com/nvm-sh/nvm) to install Node.
+   - For Windows, download from [nodejs.org](https://nodejs.org).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+2. **Install Dependencies**
+   ```bash
+   cd tradeflow-frontend
+   npm install
+   ```
+   This installs `react`, `react-scripts`, and all other packages in `package.json`.
 
-### Code Splitting
+### C. Backend Setup
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+1. **Create a Virtual Environment** (recommended):
+   ```bash
+   cd ../tradeflow-backend
+   python -m venv venv
+   source venv/bin/activate  # Mac/Linux
+   # or venv\Scripts\activate on Windows
+   ```
 
-### Analyzing the Bundle Size
+2. **Install Python Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   This installs `Flask`, `Flask-Cors`, `Flask-SQLAlchemy`, `mysqlclient` or `PyMySQL`, etc.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+3. **Configure Database** (if using MySQL locally):
+   - Make sure MySQL is installed and running.
+   - Create a DB named `tradeflow`:
+     ```sql
+     CREATE DATABASE tradeflow;
+     ```
+   - In `app/__init__.py`, you might see something like:
+     ```python
+     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+         "SQLALCHEMY_DATABASE_URI", "mysql://user:pass@localhost:3306/tradeflow"
+     )
+     ```
+     Update it with your local MySQL credentials or use an environment variable.
 
-### Making a Progressive Web App
+   - If you prefer **SQLite** for local dev, you could replace the URI with something like:
+     ```python
+     sqlite:///tradeflow.db
+     ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+4. **Initialize Database** (if using SQLAlchemy):
+   - You may have a script like `create_tables.py` that calls `db.create_all()`. For example:
+     ```bash
+     python create_tables.py
+     ```
+   - Alternatively, you can do this in a Python shell:
+     ```python
+     from app import create_app
+     from app.database import db
 
-### Advanced Configuration
+     app = create_app()
+     with app.app_context():
+         db.create_all()
+     ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
+## 4. Running the Apps Locally
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### A. Starting the React Frontend
 
-### `npm run build` fails to minify
+1. **Navigate to the frontend folder**:
+   ```bash
+   cd ../tradeflow
+   ```
+2. **Run**:
+   ```bash
+   npm start
+   ```
+3. **Open** your browser to [http://localhost:3000](http://localhost:3000).
+   - If you see an error like `react-scripts: command not found`, make sure you ran `npm install` first.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### B. Starting the Flask Backend
+
+1. **Navigate to the backend folder**:
+   ```bash
+   cd ../tradeflow-backend
+   source venv/bin/activate  # if not already active
+   ```
+2. **Run**:
+   ```bash
+   python -m flask --app app/main.py run
+   ```
+   or
+   ```bash
+   python app/main.py
+   ```
+3. **Open** your browser or Postman to [http://127.0.0.1:5000/api/trades](http://127.0.0.1:5000/api/trades).
+   - You might get an empty JSON list `[]` if no trades are present yet.
+
+### C. Testing
+
+- **Submit a Trade** from the React form. The form should POST to your local backend at `http://127.0.0.1:5000/api/trades` (or wherever you configured).
+- **Check Logs** in your Flask console to ensure the request is processed.
+- **Check Database** if you’re using MySQL or SQLite to confirm the new record is saved.
+
+---
+
+## 5. Common Issues & Troubleshooting
+
+1. **`react-scripts: command not found`**
+   - Run `npm install` in the `tradeflow` folder to ensure `react-scripts` is installed.
+2. **Local DB Connection Errors**
+   - Verify your MySQL is running and credentials match. Or switch to SQLite for local dev.
+   - Check that you updated `SQLALCHEMY_DATABASE_URI`.
+3. **CORS Issues**
+   - For local dev, you may need [Flask-CORS](https://flask-cors.readthedocs.io/) if your React app is served from a different port than the Flask backend.
+
+---
+
