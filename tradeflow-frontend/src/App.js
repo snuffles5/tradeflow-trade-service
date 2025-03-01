@@ -5,7 +5,7 @@ import TradeForm from "./components/TradeForm";
 function App() {
   return (
     <div>
-      <h1>TradeFlow</h1>
+      <h1>Trade Flow</h1>
       <TradeForm />
     </div>
   );
