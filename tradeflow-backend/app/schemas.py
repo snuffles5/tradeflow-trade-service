@@ -2,6 +2,7 @@
 from marshmallow import Schema, fields, validates_schema, ValidationError
 from datetime import date
 
+
 class TradeSchema(Schema):
     type = fields.Str(required=True)
     source = fields.Str(required=True)
@@ -9,8 +10,7 @@ class TradeSchema(Schema):
     ticker = fields.Str(required=True)
     quantity = fields.Float(required=True)
     pricePerUnit = fields.Float(required=True)
-    date = fields.Date(required=True)  # e.g., "2023-01-01"
-    stopLoss = fields.Float(required=True)
+    stopLoss = fields.Float(required=False)  # Make it optional
 
     @validates_schema
     def validate_values(self, data, **kwargs):

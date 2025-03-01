@@ -50,7 +50,6 @@ def list_trades():
             "ticker": t.ticker,
             "quantity": t.quantity,
             "price_per_unit": t.price_per_unit,
-            "trade_date": t.trade_date.isoformat(),
             "stop_loss": t.stop_loss,
             "created_at": t.created_at.isoformat(),
             "updated_at": t.updated_at.isoformat()
