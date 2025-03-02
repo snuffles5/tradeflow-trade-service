@@ -88,3 +88,86 @@ def aggregated_trades():
     # Merge similar trades (grouping by ticker, source, and type)
     summary_data = merge_trades(trades_list, merge_keys=['ticker', 'source', 'type'])
     return jsonify(summary_data), 200
+
+
+@trades_bp.route("/trade-summary", methods=["GET"])
+def trade_summary():
+    # Query all trades from the database
+    trades = Trade.query.all()
+    trades_list = []
+    for trade in trades:
+        created_at_str = trade.created_at.strftime("%m/%d/%Y") if trade.created_at else None
+        trade_dict = {
+            "ticker": trade.ticker,
+            "source": trade.source,
+            "type": trade.type,
+            "quantity": trade.quantity,
+            "price_per_unit": trade.price_per_unit,
+            "created_at": created_at_str,
+            "transaction_type": trade.transaction_type,
+        }
+        # Get the current price for the ticker (from your price provider)
+        trade_dict["currentPrice"] = price_provider.get_price(trade.ticker)
+        trades_list.append(trade_dict)
+
+    # Merge trades by ticker, source, and type (using your existing merge_trades function)
+    merged_data = merge_trades(trades_list, merge_keys=['ticker', 'source', 'type'])
+
+    overall_net_cash = 0
+    overall_profit = 0
+    overall_buy_amount = 0
+
+    by_source = {}
+    by_type = {}
+
+    for group in merged_data:
+        # totalCost and profit are computed in merge_trades
+        net_cash = group.get("totalCost", 0)
+        profit = group.get("profit", 0) if group.get("profit") is not None else 0
+
+        overall_net_cash += net_cash
+        overall_profit += profit
+
+        # Recompute group buy amount from trades (if merge_trades removed it)
+        group_buy_amount = sum(
+            t['quantity'] * t['price_per_unit']
+            for t in group.get('trades', [])
+            if t.get('transaction_type', '').lower() == 'buy'
+        )
+        overall_buy_amount += group_buy_amount
+
+        # Aggregate per source
+        src = group.get("source", "Unknown")
+        if src not in by_source:
+            by_source[src] = {"totalNetCash": 0, "totalProfit": 0, "buyAmount": 0, "count": 0}
+        by_source[src]["totalNetCash"] += net_cash
+        by_source[src]["totalProfit"] += profit
+        by_source[src]["buyAmount"] += group_buy_amount
+        by_source[src]["count"] += 1
+
+        # Aggregate per type
+        typ = group.get("type", "Unknown")
+        if typ not in by_type:
+            by_type[typ] = {"totalNetCash": 0, "totalProfit": 0, "buyAmount": 0, "count": 0}
+        by_type[typ]["totalNetCash"] += net_cash
+        by_type[typ]["totalProfit"] += profit
+        by_type[typ]["buyAmount"] += group_buy_amount
+        by_type[typ]["count"] += 1
+
+    overall_profit_percentage = round((overall_profit / overall_buy_amount) * 100, 2) if overall_buy_amount else None
+
+    # Calculate profit percentage for each group
+    for src, data in by_source.items():
+        data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data["buyAmount"] else None
+    for typ, data in by_type.items():
+        data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data["buyAmount"] else None
+
+    result = {
+        "overall": {
+            "totalNetCash": overall_net_cash,
+            "totalProfitPercentage": overall_profit_percentage,
+        },
+        "bySource": by_source,
+        "byType": by_type,
+    }
+    return jsonify(result), 200
