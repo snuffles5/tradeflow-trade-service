@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import {
     Container,
     Typography,
@@ -16,10 +16,18 @@ import {
     Grid,
 } from "@mui/material";
 
+// Helper function to format numbers with commas and fixed decimals
+const formatNumber = (num, decimals = 2) => {
+    return Number(num).toLocaleString("en-US", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+    });
+};
+
 function SummaryPage() {
     const [summaryData, setSummaryData] = useState([]);
     const [aggregateData, setAggregateData] = useState(null);
-    const [sortConfig, setSortConfig] = useState({key: "totalQuantity", direction: "desc"});
+    const [sortConfig, setSortConfig] = useState({ key: "totalQuantity", direction: "desc" });
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
     const [aggLoading, setAggLoading] = useState(true);
@@ -74,51 +82,50 @@ function SummaryPage() {
     };
 
     const columns = [
-        {key: "ticker", label: "Ticker"},
-        {key: "source", label: "Source"},
-        {key: "type", label: "Type"},
-        {key: "totalQuantity", label: "Total Quantity"},
-        {key: "totalCost", label: "Net Cost"},
-        {key: "lastPrice", label: "Last Trade Price"},
-        {key: "currentPrice", label: "Current Price"},
-        {key: "profit", label: "Profit"},
-        {key: "profitPercentage", label: "Profit (%)"},
-        {key: "holdingPeriod", label: "Holding Period (days)"},
-        {key: "tradeCount", label: "Trade Count"},
+        { key: "ticker", label: "Ticker" },
+        { key: "source", label: "Source" },
+        { key: "type", label: "Type" },
+        { key: "totalQuantity", label: "Total Quantity" },
+        { key: "totalCost", label: "Net Cost" },
+        { key: "lastPrice", label: "Last Trade Price" },
+        { key: "currentPrice", label: "Current Price" },
+        { key: "profit", label: "Profit" },
+        { key: "profitPercentage", label: "Profit (%)" },
+        { key: "holdingPeriod", label: "Holding Period (days)" },
+        { key: "tradeCount", label: "Trade Count" },
     ];
 
     return (
-        <Container maxWidth="md" sx={{mt: 4}}>
+        <Container maxWidth="md" sx={{ mt: 4 }}>
             <Typography variant="h4" gutterBottom>
                 Trades Summary
             </Typography>
 
             {/* Aggregated Metrics Section */}
             {aggLoading ? (
-                <CircularProgress/>
+                <CircularProgress />
             ) : aggregateData ? (
-                <Paper sx={{p: 2, mb: 2}}>
+                <Paper sx={{ p: 2, mb: 2 }}>
                     <Typography variant="h6">Overall Metrics</Typography>
                     <Typography variant="body1">
-                        Total Net Cash: ${aggregateData.overall.totalNetCash.toFixed(2)}
+                        Total Net Cash: ${formatNumber(aggregateData.overall.totalNetCash)}
                     </Typography>
                     <Typography variant="body1">
                         Total Profit Percentage:{" "}
                         {aggregateData.overall.totalProfitPercentage !== null
-                            ? `${aggregateData.overall.totalProfitPercentage}%`
+                            ? `${formatNumber(aggregateData.overall.totalProfitPercentage)}%`
                             : "N/A"}
                     </Typography>
-                    <Box sx={{mt: 2}}>
+                    <Box sx={{ mt: 2 }}>
                         <Grid container spacing={2}>
                             {/* Breakdown by Source */}
                             <Grid item xs={6}>
                                 <Typography variant="subtitle1">By Source</Typography>
                                 {Object.entries(aggregateData.bySource).map(([source, data]) => (
-                                    <Box key={source} sx={{mb: 1}}>
+                                    <Box key={source} sx={{ mb: 1 }}>
                                         <Typography variant="body2">
-                                            <strong>{source}:</strong> Net Cash: ${data.totalNetCash.toFixed(2)} |
-                                            Profit %:{" "}
-                                            {data.profitPercentage !== null ? `${data.profitPercentage}%` : "N/A"}
+                                            <strong>{source}:</strong> Net Cash: ${formatNumber(data.totalNetCash)} | Profit %:{" "}
+                                            {data.profitPercentage !== null ? `${formatNumber(data.profitPercentage) }%` : "N/A"}
                                         </Typography>
                                     </Box>
                                 ))}
@@ -127,11 +134,10 @@ function SummaryPage() {
                             <Grid item xs={6}>
                                 <Typography variant="subtitle1">By Type</Typography>
                                 {Object.entries(aggregateData.byType).map(([type, data]) => (
-                                    <Box key={type} sx={{mb: 1}}>
+                                    <Box key={type} sx={{ mb: 1 }}>
                                         <Typography variant="body2">
-                                            <strong>{type}:</strong> Net Cash: ${data.totalNetCash.toFixed(2)} | Profit
-                                            %:{" "}
-                                            {data.profitPercentage !== null ? `${data.profitPercentage}%` : "N/A"}
+                                            <strong>{type}:</strong> Net Cash: ${formatNumber(data.totalNetCash)} | Profit %:{" "}
+                                            {data.profitPercentage !== null ? `${formatNumber(data.profitPercentage)}%` : "N/A"}
                                         </Typography>
                                     </Box>
                                 ))}
@@ -146,19 +152,19 @@ function SummaryPage() {
                 label="Search by Ticker, Source, or Type"
                 variant="outlined"
                 fullWidth
-                sx={{mb: 2}}
+                sx={{ mb: 2 }}
                 onChange={(e) => setSearch(e.target.value)}
             />
 
             {/* Detailed Summary Table */}
             {loading ? (
-                <CircularProgress/>
+                <CircularProgress />
             ) : (
                 <TableContainer component={Paper}>
                     <Table>
                         <TableHead>
                             <TableRow>
-                                {columns.map(({key, label}) => (
+                                {columns.map(({ key, label }) => (
                                     <TableCell key={key}>
                                         <TableSortLabel
                                             active={sortConfig.key === key}
@@ -183,24 +189,28 @@ function SummaryPage() {
                                             fontWeight: trade.totalQuantity === 0 ? "bold" : "normal",
                                         }}
                                     >
-                                        {trade.totalQuantity === 0 ? "Closed" : trade.totalQuantity}
+                                        {trade.totalQuantity === 0 ? "Closed" : Number(trade.totalQuantity).toLocaleString()}
                                     </TableCell>
-                                    <TableCell>${trade.totalCost.toFixed(2)}</TableCell>
-                                    <TableCell>{trade.lastPrice ? `$${trade.lastPrice.toFixed(2)}` : "N/A"}</TableCell>
-                                    <TableCell>{trade.currentPrice ? `$${trade.currentPrice.toFixed(2)}` : "N/A"}</TableCell>
+                                    <TableCell>${formatNumber(trade.totalCost)}</TableCell>
+                                    <TableCell>{trade.lastPrice ? `$${formatNumber(trade.lastPrice)}` : "N/A"}</TableCell>
+                                    <TableCell>{trade.currentPrice ? `$${formatNumber(trade.currentPrice)}` : "N/A"}</TableCell>
                                     <TableCell
                                         sx={{
                                             color: trade.profit >= 0 ? "green" : "red",
                                         }}
                                     >
-                                        {trade.profit !== null ? `$${trade.profit.toFixed(2)}` : "N/A"}
+                                        {trade.profit !== null ? `$${formatNumber(trade.profit)}` : "N/A"}
                                     </TableCell>
                                     <TableCell>
-                                        {trade.profitPercentage !== null ? `${trade.profitPercentage.toFixed(2)}%` : "N/A"}
+                                        {trade.profitPercentage !== null ? `${formatNumber(trade.profitPercentage)}%` : "N/A"}
                                     </TableCell>
                                     <TableCell>{trade.holdingPeriod !== null ? trade.holdingPeriod : "N/A"}</TableCell>
                                     <TableCell>
-                                        {trade.tradeCount !== undefined ? trade.tradeCount : (trade.trades ? trade.trades.length : "N/A")}
+                                        {trade.tradeCount !== undefined
+                                            ? Number(trade.tradeCount).toLocaleString()
+                                            : trade.trades
+                                                ? trade.trades.length
+                                                : "N/A"}
                                     </TableCell>
                                 </TableRow>
                             ))}

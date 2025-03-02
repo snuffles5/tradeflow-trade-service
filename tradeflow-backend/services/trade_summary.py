@@ -11,14 +11,18 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
                  (For closed positions, we display totalCost as -netCost so that
                   profit = -netCost and totalCost have the same sign.)
       - lastPrice: the price_per_unit of the most recent trade (by created_at)
+      - currentPrice: the current market price from the most recent trade.
       - tradeCount: the number of trades in the group
       - holdingPeriod: difference in days between the earliest and latest trade dates
-      - Profit and Profit Percentage for closed positions:
+      - For closed positions (totalQuantity == 0):
             * profit = -netCost
             * profitPercentage = (profit / (sum of buy amounts)) * 100
-      - For open positions, profit remains None.
-
-    Note: currentPrice is not used in the closed position calculations.
+      - For open positions (totalQuantity != 0):
+            * totalCost remains as computed (netCost)
+            * profit = (currentPrice - avgCost) * totalQuantity  for long positions,
+              or (avgCost - currentPrice) * abs(totalQuantity) for short positions.
+            * profitPercentage = ((currentPrice/avgCost)-1)*100 for longs,
+              or ((avgCost/currentPrice)-1)*100 for shorts.
     """
     log.trace("Starting merge_trades with %d trades.", len(trades))
 
@@ -48,11 +52,12 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
                 'totalQuantity': 0,
                 'netCost': 0,  # signed sum of (quantity * price_per_unit)
                 'lastPrice': None,
+                'currentPrice': None,  # will update from the most recent trade
                 'tradeCount': 0,
                 'holdingPeriod': None,
                 'profit': None,
                 'profitPercentage': None,
-                'buyAmount': 0,  # Sum of amounts for buy trades (for profit percentage)
+                'buyAmount': 0,  # Sum of amounts for buy trades (for profit percentage in closed positions)
                 'earliestDate': trade_date,
                 'latestDate': trade_date,
                 'trades': []
@@ -73,7 +78,7 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
         if trade.get('transaction_type', '').lower() == 'buy':
             group['buyAmount'] += qty * price
 
-        # Update earliest and latest dates and lastPrice.
+        # Update earliest and latest dates, lastPrice, and currentPrice.
         if trade_date:
             if group['earliestDate'] is None or trade_date < group['earliestDate']:
                 group['earliestDate'] = trade_date
@@ -81,11 +86,14 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
             if group['latestDate'] is None or trade_date >= group['latestDate']:
                 group['latestDate'] = trade_date
                 group['lastPrice'] = price
-                log.trace("Updated latestDate and lastPrice for key %s: %s, price %s", key, trade_date, price)
+                # Update currentPrice from the trade's field
+                group['currentPrice'] = trade.get('currentPrice', None)
+                log.trace("Updated latestDate, lastPrice, and currentPrice for key %s: %s, price %s, currentPrice %s", key, trade_date, price, group['currentPrice'])
         else:
             if group['lastPrice'] is None:
                 group['lastPrice'] = price
-                log.trace("Set lastPrice for key %s with no valid date: %s", key, price)
+                group['currentPrice'] = trade.get('currentPrice', None)
+                log.trace("Set lastPrice and currentPrice for key %s with no valid date: %s, currentPrice %s", key, price, group['currentPrice'])
 
         group['trades'].append(trade)
         log.trace("After processing trade %d for key %s: totalQuantity=%s, netCost=%s", idx, key, group['totalQuantity'], group['netCost'])
@@ -105,17 +113,29 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
             data['totalCost'] = round(-data['netCost'], 2)
             log.trace("For closed position key %s: profit=%s, profitPercentage=%s", key, data['profit'], data['profitPercentage'])
         else:
-            # Open positions: totalCost remains as computed.
+            # Open position: use currentPrice to compute profit if available.
             data['totalCost'] = data['netCost']
-            log.trace("Open position key %s: no profit calculation (profit remains None)", key)
-
-        log.trace("Final group for key %s: totalCost=%s, lastPrice=%s", key, data['totalCost'], data['lastPrice'])
+            if data.get('currentPrice') is not None:
+                # Calculate average cost per unit
+                avgCost = data['totalCost'] / data['totalQuantity']
+                if data['totalQuantity'] > 0:
+                    profit = (data['currentPrice'] - avgCost) * data['totalQuantity']
+                    profitPercentage = ((data['currentPrice'] / avgCost) - 1) * 100
+                elif data['totalQuantity'] < 0:
+                    profit = (avgCost - data['currentPrice']) * abs(data['totalQuantity'])
+                    profitPercentage = ((avgCost / data['currentPrice']) - 1) * 100
+                data['profit'] = round(profit, 2)
+                data['profitPercentage'] = round(profitPercentage, 2)
+                log.trace("For open position key %s: currentPrice=%s, avgCost=%s, profit=%s, profitPercentage=%s", key, data['currentPrice'], avgCost, data['profit'], data['profitPercentage'])
+            else:
+                data['profit'] = None
+                data['profitPercentage'] = None
+                log.trace("Open position key %s: currentPrice not available, no profit calculation", key)
 
         # Remove temporary fields.
         del data['buyAmount']
         del data['earliestDate']
         del data['latestDate']
-        # Remove the temporary netCost field if you don't want to expose it.
         del data['netCost']
 
     log.info("Completed merge_trades for %d groups.", len(summary))
