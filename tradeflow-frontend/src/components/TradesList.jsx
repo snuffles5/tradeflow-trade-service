@@ -80,7 +80,6 @@ const filteredTrades = sortedTrades.filter((trade) => {
                 { key: "price_per_unit", label: "Price per Unit" },
                 { key: "stop_loss", label: "Stop Loss" },
                 { key: "created_at", label: "Created At" },
-                { key: "updated_at", label: "Updated At" },
               ].map(({ key, label }) => (
                 <TableCell key={key}>
                   <TableSortLabel
@@ -105,8 +104,7 @@ const filteredTrades = sortedTrades.filter((trade) => {
                 <TableCell>{trade.quantity}</TableCell>
                 <TableCell>{trade.price_per_unit}</TableCell>
                 <TableCell>{trade.stop_loss}</TableCell>
-                <TableCell>{new Date(trade.created_at).toLocaleString()}</TableCell>
-                <TableCell>{new Date(trade.updated_at).toLocaleString()}</TableCell>
+                <TableCell>{new Date(trade.created_at).toLocaleDateString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>

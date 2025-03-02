@@ -69,13 +69,16 @@ def summary():
     trades = Trade.query.all()
     trades_list = []
     for trade in trades:
+        # Format created_at as MM/DD/YYYY
+        created_at_str = trade.created_at.strftime("%m/%d/%Y") if trade.created_at else None
+
         trade_dict = {
             "ticker": trade.ticker,
             "source": trade.source,
             "type": trade.type,
             "quantity": trade.quantity,
-            "pricePerUnit": trade.price_per_unit,
-            "trade_date": trade.created_at.isoformat() if trade.created_at else None,
+            "price_per_unit": trade.price_per_unit,
+            "created_at": created_at_str,
             "transaction_type": trade.transaction_type,
         }
         # Fetch the current price for the ticker (cached)
@@ -84,5 +87,4 @@ def summary():
 
     # Merge similar trades (grouping by ticker, source, and type)
     summary_data = merge_trades(trades_list, merge_keys=['ticker', 'source', 'type'])
-
     return jsonify(summary_data), 200
