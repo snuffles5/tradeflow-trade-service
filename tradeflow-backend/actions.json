@@ -1,0 +1,245 @@
+[
+  {
+    "ticker": "BNTX",
+    "created_at": "2/28/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Sell",
+    "quantity": 1,
+    "price_per_unit": "105.46"
+  },
+  {
+    "ticker": "VOO",
+    "created_at": "2/28/2025",
+    "type": "Joint",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 7,
+    "price_per_unit": "538.00"
+  },
+  {
+    "ticker": "GOOG",
+    "created_at": "1/26/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 2,
+    "price_per_unit": "177.38"
+  },
+  {
+    "ticker": "SPY",
+    "created_at": "1/26/2025",
+    "type": "Joint",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 7,
+    "price_per_unit": "596.70"
+  },
+  {
+    "ticker": "AMZN",
+    "created_at": "2/26/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 1,
+    "price_per_unit": "214.87"
+  },
+  {
+    "ticker": "SOXX",
+    "created_at": "2/25/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Sell",
+    "quantity": 1,
+    "price_per_unit": "213.59"
+  },
+  {
+    "ticker": "NVDA",
+    "created_at": "2/25/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Sell",
+    "quantity": 2,
+    "price_per_unit": "129.87"
+  },
+  {
+    "ticker": "NVDA",
+    "created_at": "2/25/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Sell",
+    "quantity": 0.5,
+    "price_per_unit": "129.89"
+  },
+  {
+    "ticker": "BNTX",
+    "created_at": "2/21/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 1,
+    "price_per_unit": "119.20"
+  },
+  {
+    "ticker": "IREN",
+    "created_at": "2/21/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Sell",
+    "quantity": -15,
+    "price_per_unit": "12.00"
+  },
+  {
+    "ticker": "TEM",
+    "created_at": "2/21/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Sell",
+    "quantity": -3,
+    "price_per_unit": "70.51"
+  },
+  {
+    "ticker": "CRM",
+    "created_at": "2/21/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Sell",
+    "quantity": -0.5,
+    "price_per_unit": "316.00"
+  },
+  {
+    "ticker": "IWN",
+    "created_at": "2/19/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 1,
+    "price_per_unit": "167.32"
+  },
+  {
+    "ticker": "MDU",
+    "created_at": "2/19/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 12,
+    "price_per_unit": "16.93"
+  },
+  {
+    "ticker": "AAPL",
+    "created_at": "2/13/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 1,
+    "price_per_unit": "235.98"
+  },
+  {
+    "ticker": "TSLA",
+    "created_at": "2/10/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 1,
+    "price_per_unit": "351.50"
+  },
+  {
+    "ticker": "TSLA",
+    "created_at": "2/10/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Sell",
+    "quantity": -1,
+    "price_per_unit": "345.59"
+  },
+  {
+    "ticker": "NVDA",
+    "created_at": "1/27/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 2,
+    "price_per_unit": "126.59"
+  },
+  {
+    "ticker": "NVDA",
+    "created_at": "1/27/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 0.5,
+    "price_per_unit": "125.77"
+  },
+  {
+    "ticker": "SOXX",
+    "created_at": "1/27/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 1,
+    "price_per_unit": "218.67"
+  },
+  {
+    "ticker": "SPY",
+    "created_at": "1/24/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 2.5,
+    "price_per_unit": "608.97"
+  },
+  {
+    "ticker": "CRM",
+    "created_at": "1/24/2025",
+    "type": "Personal",
+    "source": "Interactive",
+    "transaction_type": "Buy",
+    "quantity": 0.5,
+    "price_per_unit": "332.62"
+  },
+  {
+    "ticker": "IREN",
+    "created_at": "1/24/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 15,
+    "price_per_unit": "12.17"
+  },
+  {
+    "ticker": "BTCT",
+    "created_at": "1/24/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 10,
+    "price_per_unit": "7.74"
+  },
+  {
+    "ticker": "TEM",
+    "created_at": "1/22/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 3,
+    "price_per_unit": "42.85"
+  },
+  {
+    "ticker": "IONQ",
+    "created_at": "10/4/2024",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 4,
+    "price_per_unit": "9.12"
+  },
+  {
+    "ticker": "SPY",
+    "created_at": "2/5/2025",
+    "type": "Personal",
+    "source": "OneZero",
+    "transaction_type": "Buy",
+    "quantity": 2,
+    "price_per_unit": "601.77"
+  }
+]

@@ -1,11 +1,16 @@
 # app/routes/trades.py
 from flask import Blueprint, request, jsonify, current_app
+
+from services.price_provider import PriceProvider
+from services.trade_summary import merge_trades
 from ..database import db
 from ..models import Trade
 from ..schemas import TradeSchema
 
 trades_bp = Blueprint("trades_bp", __name__)
 
+# Instantiate the price provider (with 5 minutes caching)
+price_provider = PriceProvider(cache_duration=300)
 
 @trades_bp.route("/trades", methods=["POST"])
 def create_trade():
@@ -56,3 +61,28 @@ def list_trades():
         })
     current_app.logger.info("Fetched all trades")
     return jsonify(results), 200
+
+
+@trades_bp.route("/summary", methods=["GET"])
+def summary():
+    # Query all trades from the database
+    trades = Trade.query.all()
+    trades_list = []
+    for trade in trades:
+        trade_dict = {
+            "ticker": trade.ticker,
+            "source": trade.source,
+            "type": trade.type,
+            "quantity": trade.quantity,
+            "pricePerUnit": trade.price_per_unit,
+            "trade_date": trade.created_at.isoformat() if trade.created_at else None,
+            "transaction_type": trade.transaction_type,
+        }
+        # Fetch the current price for the ticker (cached)
+        trade_dict["currentPrice"] = price_provider.get_price(trade.ticker)
+        trades_list.append(trade_dict)
+
+    # Merge similar trades (grouping by ticker, source, and type)
+    summary_data = merge_trades(trades_list, merge_keys=['ticker', 'source', 'type'])
+
+    return jsonify(summary_data), 200
