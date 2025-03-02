@@ -1,13 +1,17 @@
-// src/App.js
-import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import TradeForm from "./components/TradeForm";
+import TradesList from "./components/TradesList";
+import SummaryPage from "./components/SummaryPage";
 
 function App() {
   return (
-    <div>
-      <h1>TradeFlow</h1>
-      <TradeForm />
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<TradeForm />} />
+        <Route path="/trades" element={<TradesList />} />
+        <Route path="/summary" element={<SummaryPage />} />
+      </Routes>
+    </Router>
   );
 }
 
