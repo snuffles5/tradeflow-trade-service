@@ -86,7 +86,7 @@
     "type": "Personal",
     "source": "OneZero",
     "transaction_type": "Sell",
-    "quantity": -15,
+    "quantity": 15,
     "price_per_unit": "12.00"
   },
   {
@@ -95,7 +95,7 @@
     "type": "Personal",
     "source": "OneZero",
     "transaction_type": "Sell",
-    "quantity": -3,
+    "quantity": 3,
     "price_per_unit": "70.51"
   },
   {
@@ -104,7 +104,7 @@
     "type": "Personal",
     "source": "Interactive",
     "transaction_type": "Sell",
-    "quantity": -0.5,
+    "quantity": 0.5,
     "price_per_unit": "316.00"
   },
   {
@@ -149,7 +149,7 @@
     "type": "Personal",
     "source": "Interactive",
     "transaction_type": "Sell",
-    "quantity": -1,
+    "quantity": 1,
     "price_per_unit": "345.59"
   },
   {
