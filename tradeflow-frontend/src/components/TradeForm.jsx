@@ -59,7 +59,7 @@ function TradeForm() {
         };
 
         // Log the payload for debugging
-        console.log("Submitting payload:", payload);
+        console.log("Submitting payload to:", process.env.REACT_APP_API_URL, ", payload: ", payload);
 
         // Update the fetch URL to your Elastic Beanstalk URL
         fetch(`${process.env.REACT_APP_API_URL}/trades`, {
