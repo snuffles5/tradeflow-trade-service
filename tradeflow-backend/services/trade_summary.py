@@ -4,12 +4,25 @@ from utils.logger import log
 def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
     """
     Merges trades into summary groups based on merge_keys.
-    Computes metrics such as totalQuantity, totalCost, lastPrice, tradeCount,
-    holdingPeriod, profit, and profitPercentage.
+
+    For each group, computes:
+      - totalQuantity: net quantity (buys minus sells)
+      - netCost: sum(quantity * price_per_unit) using signed quantities.
+                 (For closed positions, we display totalCost as -netCost so that
+                  profit = -netCost and totalCost have the same sign.)
+      - lastPrice: the price_per_unit of the most recent trade (by created_at)
+      - tradeCount: the number of trades in the group
+      - holdingPeriod: difference in days between the earliest and latest trade dates
+      - Profit and Profit Percentage for closed positions:
+            * profit = -netCost
+            * profitPercentage = (profit / (sum of buy amounts)) * 100
+      - For open positions, profit remains None.
+
+    Note: currentPrice is not used in the closed position calculations.
     """
     log.trace("Starting merge_trades with %d trades.", len(trades))
 
-    # Normalize sell trades
+    # Normalize sell trades (ensure they have negative quantity)
     for idx, trade in enumerate(trades):
         if trade.get('transaction_type', '').lower() == 'sell' and trade.get('quantity', 0) > 0:
             original_qty = trade.get('quantity', 0)
@@ -26,7 +39,6 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
             trade_date = None
             log.info("Failed to parse date '%s' for trade index %d: %s", created_at_str, idx, e)
 
-        log.trace("Trade %d: price_per_unit=%s", idx, trade.get('price_per_unit'))
         key = tuple(trade.get(k) for k in merge_keys)
         if key not in summary:
             summary[key] = {
@@ -34,7 +46,7 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
                 'source': trade.get('source'),
                 'type': trade.get('type'),
                 'totalQuantity': 0,
-                'totalCost': 0,
+                'netCost': 0,  # signed sum of (quantity * price_per_unit)
                 'lastPrice': None,
                 'tradeCount': 0,
                 'holdingPeriod': None,
@@ -50,15 +62,18 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
         group = summary[key]
         qty = trade.get('quantity', 0)
         price = trade.get('price_per_unit', 0)
+        log.trace("Trade %d: quantity=%s, price_per_unit=%s", idx, qty, price)
 
+        # Accumulate net cost using signed amounts
+        group['netCost'] += qty * price
         group['totalQuantity'] += qty
-        group['totalCost'] += qty * price  # Note: sells are negative
         group['tradeCount'] += 1
 
+        # Accumulate buy amount (only for buy trades)
         if trade.get('transaction_type', '').lower() == 'buy':
             group['buyAmount'] += qty * price
 
-        # Update earliest and latest dates and lastPrice
+        # Update earliest and latest dates and lastPrice.
         if trade_date:
             if group['earliestDate'] is None or trade_date < group['earliestDate']:
                 group['earliestDate'] = trade_date
@@ -73,30 +88,35 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
                 log.trace("Set lastPrice for key %s with no valid date: %s", key, price)
 
         group['trades'].append(trade)
-        log.trace("After processing trade %d for key %s: totalQuantity=%s, totalCost=%s", idx, key, group['totalQuantity'], group['totalCost'])
+        log.trace("After processing trade %d for key %s: totalQuantity=%s, netCost=%s", idx, key, group['totalQuantity'], group['netCost'])
 
-    # Compute derived metrics for each group
+    # Compute derived metrics for each group.
     for key, data in summary.items():
         if data['earliestDate'] and data['latestDate']:
             data['holdingPeriod'] = (data['latestDate'] - data['earliestDate']).days
             log.trace("Computed holdingPeriod for key %s: %d days", key, data['holdingPeriod'])
 
-        if data['totalQuantity'] == 0:  # Closed position
-            data['profit'] = round(-data['totalCost'], 2)
+        if data['totalQuantity'] == 0:
+            # Closed position: compute realized profit.
+            data['profit'] = round(-data['netCost'], 2)
             if data['buyAmount'] != 0:
                 data['profitPercentage'] = round((data['profit'] / data['buyAmount']) * 100, 2)
+            # Adjust displayed total cost to have the same sign as profit.
+            data['totalCost'] = round(-data['netCost'], 2)
             log.trace("For closed position key %s: profit=%s, profitPercentage=%s", key, data['profit'], data['profitPercentage'])
         else:
-            # For open positions, no profit calculation is done.
+            # Open positions: totalCost remains as computed.
+            data['totalCost'] = data['netCost']
             log.trace("Open position key %s: no profit calculation (profit remains None)", key)
 
-        # Log final computed values for the group
         log.trace("Final group for key %s: totalCost=%s, lastPrice=%s", key, data['totalCost'], data['lastPrice'])
 
-        # Remove temporary fields
+        # Remove temporary fields.
         del data['buyAmount']
         del data['earliestDate']
         del data['latestDate']
+        # Remove the temporary netCost field if you don't want to expose it.
+        del data['netCost']
 
     log.info("Completed merge_trades for %d groups.", len(summary))
     return list(summary.values())

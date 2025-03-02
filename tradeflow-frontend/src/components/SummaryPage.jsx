@@ -21,7 +21,7 @@ function SummaryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/summary`)
+    fetch(`${process.env.REACT_APP_API_URL}/aggregated-trades`)
         .then((res) => res.json())
         .then((data) => {
           setSummaryData(data);
@@ -63,7 +63,7 @@ function SummaryPage() {
     { key: "source", label: "Source" },
     { key: "type", label: "Type" },
     { key: "totalQuantity", label: "Total Quantity" },
-    { key: "totalCost", label: "Total Cost" },
+    { key: "totalCost", label: "Net Cost" },
     { key: "lastPrice", label: "Last Trade Price" },
     { key: "currentPrice", label: "Current Price" },
     { key: "profit", label: "Profit" },
@@ -113,7 +113,14 @@ function SummaryPage() {
                         <TableCell>{trade.ticker}</TableCell>
                         <TableCell>{trade.source}</TableCell>
                         <TableCell>{trade.type}</TableCell>
-                        <TableCell>{trade.totalQuantity}</TableCell>
+                        <TableCell
+                            sx={{
+                              color: trade.totalQuantity === 0 ? "blue" : "inherit",
+                              fontWeight: trade.totalQuantity === 0 ? "bold" : "normal",
+                            }}
+                        >
+                          {trade.totalQuantity === 0 ? "Closed" : trade.totalQuantity}
+                        </TableCell>
                         <TableCell>${trade.totalCost.toFixed(2)}</TableCell>
                         <TableCell>{trade.lastPrice ? `$${trade.lastPrice.toFixed(2)}` : "N/A"}</TableCell>
                         <TableCell>{trade.currentPrice ? `$${trade.currentPrice.toFixed(2)}` : "N/A"}</TableCell>

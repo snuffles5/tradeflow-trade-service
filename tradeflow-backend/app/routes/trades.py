@@ -63,8 +63,8 @@ def list_trades():
     return jsonify(results), 200
 
 
-@trades_bp.route("/summary", methods=["GET"])
-def summary():
+@trades_bp.route("/aggregated-trades", methods=["GET"])
+def aggregated_trades():
     # Query all trades from the database
     trades = Trade.query.all()
     trades_list = []
