@@ -1,7 +1,7 @@
-# price_provider.py
 import time
-import random
-import requests  # In a real implementation, use this to fetch from an API
+from utils.logger import log
+from services.providers.factory import PriceProviderFactory
+
 
 class PriceProvider:
     def __init__(self, cache_duration=300):
@@ -10,24 +10,37 @@ class PriceProvider:
         """
         self.cache = {}
         self.cache_duration = cache_duration
+        self.yahoo_provider = PriceProviderFactory.get_provider("yahoo")
+        log.debug(f"PriceProvider initialized with cache_duration={cache_duration}.")
 
     def get_price(self, ticker):
         current_time = time.time()
-        # Check if we have a cached price that is still valid
+        log.trace(f"Attempting to get price for '{ticker}' in PriceProvider cache.")
+
         if ticker in self.cache:
             price, timestamp = self.cache[ticker]
-            if current_time - timestamp < self.cache_duration:
+            age = current_time - timestamp
+            if age < self.cache_duration:
+                log.debug(
+                    f"Cache hit for '{ticker}' in PriceProvider. "
+                    f"Price={price}, age={age:.1f}s."
+                )
                 return price
-        # Otherwise, fetch a new price
+            else:
+                log.debug(
+                    f"Cache entry for '{ticker}' in PriceProvider expired. Age={age:.1f}s."
+                )
+
+        log.debug(f"Cache miss for '{ticker}' in PriceProvider. Fetching from Yahoo provider.")
         price = self.fetch_from_provider(ticker)
-        # Cache the result
         self.cache[ticker] = (price, current_time)
+        log.info(f"Price for '{ticker}' is {price}. Cached in PriceProvider.")
         return price
 
     def fetch_from_provider(self, ticker):
-        # In a real implementation, replace the following lines with an API request.
-        # For example:
-        # response = requests.get(f"https://api.example.com/price/{ticker}")
-        # return response.json()['price']
-        # For now, we simulate a price:
-        return round(random.uniform(100, 500), 2)
+        log.trace(f"Delegating fetch for '{ticker}' to YahooPriceProvider.")
+        try:
+            return 0
+            return self.yahoo_provider.get_price(ticker)
+        except Exception as e:
+            log.error(f"Failed to fetch price for '{ticker}' from Yahoo: {str(e)}")
