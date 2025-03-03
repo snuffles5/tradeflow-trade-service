@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import TradeForm from "./components/TradeForm";
-import TradesList from "./components/TradesList";
-import SummaryPage from "./components/SummaryPage";
+import TradeForm from "./components/TradeForm.jsx";
+import TradesList from "./components/TradesList.jsx";
+import SummaryPage from "./components/SummaryPage.jsx";
 
 function App() {
   return (
