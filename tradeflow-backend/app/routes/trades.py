@@ -121,9 +121,25 @@ def trade_summary():
     by_type = {}
 
     for group in merged_data:
-        # totalCost and profit are computed in merge_trades
-        net_cash = group.get("totalCost", 0)
-        profit = group.get("profit", 0) if group.get("profit") is not None else 0
+        # Determine if the position is closed (totalQuantity is zero) or open.
+        quantity = group.get("totalQuantity", 0)
+        if quantity == 0:
+            # Closed position: use the computed totalCost and profit
+            net_cash = group.get("totalCost", 0)
+            profit = group.get("profit", 0) if group.get("profit") is not None else 0
+        else:
+            # Open position: compute net cash as current market value.
+            # Assuming all trades in the group have the same currentPrice, we take the first one.
+            trades_in_group = group.get("trades", [])
+            if trades_in_group and trades_in_group[0].get("currentPrice") is not None:
+                current_price = trades_in_group[0]["currentPrice"]
+            else:
+                current_price = group.get("lastPrice", 0)
+            # The current market value is:
+            net_cash = current_price * quantity
+            # Unrealized profit/loss is the difference from the original cost basis.
+            # Note: For open trades, merge_trades sets totalCost as the cost basis.
+            profit = net_cash - group.get("totalCost", 0)
 
         overall_net_cash += net_cash
         overall_profit += profit
