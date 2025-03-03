@@ -36,7 +36,7 @@ def calculate_holding_period(trades):
     return last_closed_cycle_duration
 
 
-def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
+def merge_trades(trades, merge_keys=None):
     """
     Merges trades into summary groups based on merge_keys.
 
@@ -59,6 +59,8 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
             * profitPercentage = ((currentPrice/avgCost)-1)*100 for longs,
               or ((avgCost/currentPrice)-1)*100 for shorts.
     """
+    if merge_keys is None:
+        merge_keys = ['ticker', 'source', 'type']
     log.trace("Starting merge_trades with %d trades.", len(trades))
 
     # Normalize sell trades (ensure they have negative quantity)
