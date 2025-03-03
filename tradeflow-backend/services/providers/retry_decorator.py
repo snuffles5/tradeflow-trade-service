@@ -1,31 +1,30 @@
+# services/providers/retry_decorator.py
 import time
-from functools import wraps
+import functools
+import logging
 
 
-def retry(exceptions, tries=3, delay=1, backoff=2):
+def retry(exceptions, max_attempts=3, delay=1, backoff=2):
     """
-    Retry decorator that catches specified exceptions and retries the function.
-
-    :param exceptions: An exception or tuple of exceptions that trigger a retry.
-    :param tries: Number of attempts before giving up.
-    :param delay: Initial delay between attempts (in seconds).
-    :param backoff: Multiplier by which the delay increases after each retry.
+    Retry decorator that retries a function up to `max_attempts`
+    times with a sleep of `delay` seconds between attempts.
     """
 
     def decorator(func):
-        @wraps(func)
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            _tries, _delay = tries, delay
-            while _tries > 1:
+            attempt = 0
+            last_exception = None
+            while attempt < max_attempts:
                 try:
                     return func(*args, **kwargs)
-                except exceptions as e:
-                    print(f"Exception: {e}. Retrying in {_delay} seconds...")
-                    time.sleep(_delay)
-                    _tries -= 1
-                    _delay *= backoff
-            # Final attempt; let any exception bubble up
-            return func(*args, **kwargs)
+                except Exception as e:
+                    logging.warning(f"Attempt {attempt + 1} failed with {e}")
+                    last_exception = e
+                    attempt += 1
+                    time.sleep(delay)
+            # If we get here, all attempts failed
+            raise last_exception
 
         return wrapper
 
