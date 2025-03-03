@@ -19,8 +19,8 @@ class ProviderFactory:
             self.providers = providers
         else:
             self.providers = [
-                YahooFinanceProvider(),
                 GoogleFinanceProvider(),
+                YahooFinanceProvider(),
             ]
 
     def get_price(self, symbol: str) -> float:
