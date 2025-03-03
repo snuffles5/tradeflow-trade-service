@@ -259,5 +259,45 @@
     "transaction_type": "Buy",
     "quantity": 4,
     "price_per_unit": "9.12"
+  },
+  {
+    "ticker": "SPY",
+    "created_at": "03/03/2025",
+    "type": "Joint",
+    "source": "Interactive IL",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": "594.50",
+    "date": "03/03/2025"
+  },
+  {
+    "ticker": "IWM",
+    "created_at": "03/03/2025",
+    "type": "Joint",
+    "source": "Interactive IL",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": "214.65",
+    "date": "03/03/2025"
+  },
+  {
+    "ticker": "QQQ",
+    "created_at": "03/03/2025",
+    "type": "Joint",
+    "source": "Interactive IL",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": "508.10",
+    "date": "03/03/2025"
+  },
+  {
+    "ticker": "TOPT",
+    "created_at": "03/03/2025",
+    "type": "Joint",
+    "source": "Interactive IL",
+    "transaction_type": "Buy",
+    "quantity": 17.0,
+    "price_per_unit": "25.80",
+    "date": "03/03/2025"
   }
 ]
