@@ -2,6 +2,8 @@
 import os
 from flask import Flask
 from flask_cors import CORS  # Import flask-cors
+from flask_migrate import Migrate
+
 from .database import db
 from .routes.trades import trades_bp
 
@@ -21,6 +23,9 @@ def create_app():
 
     # Initialize the database
     db.init_app(app)
+
+    # Initialize Flask-Migrate **AFTER** initializing the database
+    migrate = Migrate(app, db)
 
     # Register the blueprint for trade routes
     app.register_blueprint(trades_bp, url_prefix="/api")
