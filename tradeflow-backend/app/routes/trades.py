@@ -1,8 +1,13 @@
 # app/routes/trades.py
+import json
+import os
+from datetime import datetime
+
 from flask import Blueprint, request, jsonify, current_app
 
-from services.price_provider import PriceProvider
+from services.providers.factory import ProviderFactory
 from services.trade_summary import merge_trades
+from utils.consts import BACKEND_PROJECT_ROOT_PATH, DATA_FOLDER_PATH
 from ..database import db
 from ..models import Trade
 from ..schemas import TradeSchema
@@ -10,7 +15,45 @@ from ..schemas import TradeSchema
 trades_bp = Blueprint("trades_bp", __name__)
 
 # Instantiate the price provider (with 5 minutes caching)
-price_provider = PriceProvider(cache_duration=300)
+provider_factory = ProviderFactory(cache_duration=300)
+
+TRADES_JSON_FILE = DATA_FOLDER_PATH / "trades.json"
+
+
+def save_to_file(new_trade):
+    # File path for storing trades
+
+    # Append the new trade to JSON file
+    trade_record = {
+        "ticker": new_trade.ticker,
+        "created_at": new_trade.date.strftime("%m/%d/%Y"),
+        "type": new_trade.type,
+        "source": new_trade.source,
+        "transaction_type": new_trade.transaction_type,
+        "quantity": new_trade.quantity,
+        "price_per_unit": f"{new_trade.price_per_unit:.2f}",
+        "date": new_trade.date.strftime("%m/%d/%Y"),
+    }
+
+    # Load existing data if the file exists
+    if os.path.exists(TRADES_JSON_FILE):
+        with open(TRADES_JSON_FILE, "r") as file:
+            try:
+                trades_list = json.load(file)
+            except json.JSONDecodeError:
+                trades_list = []  # Reset if JSON is corrupted
+    else:
+        trades_list = []
+
+    # Append the new record and save
+    trades_list.append(trade_record)
+    try:
+        with open(TRADES_JSON_FILE, "w") as file:
+            json.dump(trades_list, file, indent=2)
+    except Exception as e:
+        current_app.logger.error(f"Error saving trade to file: {str(e)}")
+
+
 
 @trades_bp.route("/trades", methods=["POST"])
 def create_trade():
@@ -30,12 +73,14 @@ def create_trade():
         ticker=data["ticker"],
         quantity=data["quantity"],
         price_per_unit=data["pricePerUnit"],
-        trade_date=data["date"],  # already a date object from Marshmallow
+        date=data.get("date", datetime.utcnow()),  # Use provided date or default to now
         stop_loss=data["stopLoss"]
     )
 
     db.session.add(new_trade)
     db.session.commit()
+
+    save_to_file(new_trade)
 
     current_app.logger.info(f"Trade created with ID: {new_trade.id}")
     return jsonify({"message": "Trade created", "trade_id": new_trade.id}), 201
@@ -57,7 +102,8 @@ def list_trades():
             "price_per_unit": t.price_per_unit,
             "stop_loss": t.stop_loss,
             "created_at": t.created_at.isoformat(),
-            "updated_at": t.updated_at.isoformat()
+            "updated_at": t.updated_at.isoformat(),
+            "date": t.date.isoformat(),
         })
     current_app.logger.info("Fetched all trades")
     return jsonify(results), 200
@@ -174,9 +220,11 @@ def trade_summary():
 
     # Calculate profit percentage for each group
     for src, data in by_source.items():
-        data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data["buyAmount"] else None
+        data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data[
+            "buyAmount"] else None
     for typ, data in by_type.items():
-        data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data["buyAmount"] else None
+        data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data[
+            "buyAmount"] else None
 
     result = {
         "overall": {
@@ -196,7 +244,7 @@ def get_last_price(ticker):
     """
     try:
         # Use the existing price provider (with caching) to get the latest price.
-        price = price_provider.get_price(ticker)
+        price = provider_factory.get_price(ticker)
         return jsonify({"ticker": ticker, "lastPrice": price}), 200
     except Exception as e:
         current_app.logger.error(f"Error fetching last price for {ticker}: {str(e)}")

@@ -20,6 +20,7 @@ def load_data(file_path):
         for item in data:
             if 'created_at' in item and item['created_at']:
                 item['created_at'] = datetime.strptime(item['created_at'], "%m/%d/%Y")
+                item['date'] = item['created_at']
 
             if 'updated_at' in item and item['updated_at']:
                 item['updated_at'] = datetime.strptime(item['updated_at'], "%m/%d/%Y")

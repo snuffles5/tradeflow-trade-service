@@ -14,6 +14,7 @@ class Trade(db.Model):
     price_per_unit = db.Column(db.Float, nullable=False)
     stop_loss = db.Column(db.Float, nullable=True)  # Optional
 
+    date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
