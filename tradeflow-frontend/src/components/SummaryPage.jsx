@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
 import {
     Container,
     Typography,
@@ -7,6 +7,7 @@ import {
     TableRow,
     TableCell,
     TableBody,
+    TableFooter,
     TableContainer,
     Paper,
     TextField,
@@ -27,7 +28,7 @@ const formatNumber = (num, decimals = 2) => {
 function SummaryPage() {
     const [summaryData, setSummaryData] = useState([]);
     const [aggregateData, setAggregateData] = useState(null);
-    const [sortConfig, setSortConfig] = useState({ key: "totalQuantity", direction: "desc" });
+    const [sortConfig, setSortConfig] = useState({key: "totalQuantity", direction: "desc"});
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
     const [aggLoading, setAggLoading] = useState(true);
@@ -58,12 +59,14 @@ function SummaryPage() {
             });
     }, []);
 
+    // Sort the data based on sortConfig
     const sortedData = [...summaryData].sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "asc" ? -1 : 1;
         if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
     });
 
+    // Filter data based on search terms
     const filteredData = sortedData.filter((trade) => {
         const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
         return searchTerms.every(
@@ -73,6 +76,19 @@ function SummaryPage() {
                 trade.type.toLowerCase().includes(term)
         );
     });
+
+    // Pre-calculate totals from filtered data
+    const totals = filteredData.reduce(
+        (acc, trade) => {
+            acc.totalQuantity += Number(trade.totalQuantity) || 0;
+            acc.totalCost += Number(trade.totalCost) || 0;
+            // For profit, if it's null then we add 0.
+            acc.profit += trade.profit !== null ? Number(trade.profit) : 0;
+            acc.tradeCount += Number(trade.tradeCount) || (trade.trades ? trade.trades.length : 0);
+            return acc;
+        },
+        {totalQuantity: 0, totalCost: 0, profit: 0, tradeCount: 0}
+    );
 
     const handleSort = (key) => {
         setSortConfig((prev) => ({
@@ -96,16 +112,16 @@ function SummaryPage() {
     ];
 
     return (
-        <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Container maxWidth="md" sx={{mt: 4}}>
             <Typography variant="h4" gutterBottom>
                 Trades Summary
             </Typography>
 
             {/* Aggregated Metrics Section */}
             {aggLoading ? (
-                <CircularProgress />
+                <CircularProgress/>
             ) : aggregateData ? (
-                <Paper sx={{ p: 2, mb: 2 }}>
+                <Paper sx={{p: 2, mb: 2}}>
                     <Typography variant="h6">Overall Metrics</Typography>
                     <Typography variant="body1">
                         Total Net Cash: ${formatNumber(aggregateData.overall.totalNetCash)}
@@ -116,16 +132,17 @@ function SummaryPage() {
                             ? `${formatNumber(aggregateData.overall.totalProfitPercentage)}%`
                             : "N/A"}
                     </Typography>
-                    <Box sx={{ mt: 2 }}>
+                    <Box sx={{mt: 2}}>
                         <Grid container spacing={2}>
                             {/* Breakdown by Source */}
                             <Grid item xs={6}>
                                 <Typography variant="subtitle1">By Source</Typography>
                                 {Object.entries(aggregateData.bySource).map(([source, data]) => (
-                                    <Box key={source} sx={{ mb: 1 }}>
+                                    <Box key={source} sx={{mb: 1}}>
                                         <Typography variant="body2">
-                                            <strong>{source}:</strong> Net Cash: ${formatNumber(data.totalNetCash)} | Profit %:{" "}
-                                            {data.profitPercentage !== null ? `${formatNumber(data.profitPercentage) }%` : "N/A"}
+                                            <strong>{source}:</strong> Net Cash: ${formatNumber(data.totalNetCash)} |
+                                            Profit %:{" "}
+                                            {data.profitPercentage !== null ? `${formatNumber(data.profitPercentage)}%` : "N/A"}
                                         </Typography>
                                     </Box>
                                 ))}
@@ -134,9 +151,10 @@ function SummaryPage() {
                             <Grid item xs={6}>
                                 <Typography variant="subtitle1">By Type</Typography>
                                 {Object.entries(aggregateData.byType).map(([type, data]) => (
-                                    <Box key={type} sx={{ mb: 1 }}>
+                                    <Box key={type} sx={{mb: 1}}>
                                         <Typography variant="body2">
-                                            <strong>{type}:</strong> Net Cash: ${formatNumber(data.totalNetCash)} | Profit %:{" "}
+                                            <strong>{type}:</strong> Net Cash: ${formatNumber(data.totalNetCash)} |
+                                            Profit %:{" "}
                                             {data.profitPercentage !== null ? `${formatNumber(data.profitPercentage)}%` : "N/A"}
                                         </Typography>
                                     </Box>
@@ -152,19 +170,19 @@ function SummaryPage() {
                 label="Search by Ticker, Source, or Type"
                 variant="outlined"
                 fullWidth
-                sx={{ mb: 2 }}
+                sx={{mb: 2}}
                 onChange={(e) => setSearch(e.target.value)}
             />
 
             {/* Detailed Summary Table */}
             {loading ? (
-                <CircularProgress />
+                <CircularProgress/>
             ) : (
                 <TableContainer component={Paper}>
                     <Table>
                         <TableHead>
                             <TableRow>
-                                {columns.map(({ key, label }) => (
+                                {columns.map(({key, label}) => (
                                     <TableCell key={key}>
                                         <TableSortLabel
                                             active={sortConfig.key === key}
@@ -215,6 +233,35 @@ function SummaryPage() {
                                 </TableRow>
                             ))}
                         </TableBody>
+                        <TableFooter>
+                            <TableRow
+                                sx={{
+                                    borderTop: "3px solid",
+                                    borderColor: "divider",
+                                }}
+                            >
+                                {/* Span the first three columns for a Totals label */}
+                                <TableCell colSpan={3}>Totals</TableCell>
+                                <TableCell>
+                                    {totals.totalQuantity === 0
+                                        ? "Closed"
+                                        : Number(totals.totalQuantity).toLocaleString()}
+                                </TableCell>
+                                <TableCell>${formatNumber(totals.totalCost)}</TableCell>
+                                <TableCell/>
+                                <TableCell/>
+                                <TableCell
+                                    sx={{
+                                        color: totals.profit >= 0 ? "green" : "red",
+                                    }}
+                                >
+                                    ${formatNumber(totals.profit)}
+                                </TableCell>
+                                <TableCell/>
+                                <TableCell/>
+                                <TableCell>{Number(totals.tradeCount).toLocaleString()}</TableCell>
+                            </TableRow>
+                        </TableFooter>
                     </Table>
                 </TableContainer>
             )}
