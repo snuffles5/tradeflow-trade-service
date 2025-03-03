@@ -82,7 +82,7 @@ def aggregated_trades():
             "transaction_type": trade.transaction_type,
         }
         # Fetch the current price for the ticker (cached)
-        trade_dict["currentPrice"] = price_provider.get_price(trade.ticker)
+        # trade_dict["currentPrice"] = 0 # Placeholder for the current price
         trades_list.append(trade_dict)
 
     # Merge similar trades (grouping by ticker, source, and type)
@@ -107,7 +107,7 @@ def trade_summary():
             "transaction_type": trade.transaction_type,
         }
         # Get the current price for the ticker (from your price provider)
-        trade_dict["currentPrice"] = price_provider.get_price(trade.ticker)
+        # trade_dict["currentPrice"] = 0
         trades_list.append(trade_dict)
 
     # Merge trades by ticker, source, and type (using your existing merge_trades function)
@@ -187,3 +187,17 @@ def trade_summary():
         "byType": by_type,
     }
     return jsonify(result), 200
+
+
+@trades_bp.route("/last-price/<ticker>", methods=["GET"])
+def get_last_price(ticker):
+    """
+    New endpoint to fetch the latest market price for a given ticker.
+    """
+    try:
+        # Use the existing price provider (with caching) to get the latest price.
+        price = price_provider.get_price(ticker)
+        return jsonify({"ticker": ticker, "lastPrice": price}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching last price for {ticker}: {str(e)}")
+        return jsonify({"error": "Failed to get last price"}), 500

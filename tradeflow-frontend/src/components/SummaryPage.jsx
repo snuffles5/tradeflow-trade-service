@@ -32,6 +32,7 @@ function SummaryPage() {
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
     const [aggLoading, setAggLoading] = useState(true);
+    const [lastPriceUpdatesLaunched, setLastPriceUpdatesLaunched] = useState(false);
 
     useEffect(() => {
         // Fetch detailed trade summary data
@@ -58,6 +59,62 @@ function SummaryPage() {
                 setAggLoading(false);
             });
     }, []);
+
+    useEffect(() => {
+        if (!loading && summaryData.length > 0 && !lastPriceUpdatesLaunched) {
+            setLastPriceUpdatesLaunched(true);
+
+            // Iterate through each row to update if it is an open position.
+            summaryData.forEach((trade, index) => {
+                // Only update for open positions (totalQuantity !== 0)
+                if (trade.totalQuantity !== 0) {
+                    // Set the row to "updating" state so UI shows the spinner
+                    setSummaryData(prev => {
+                        const newData = [...prev];
+                        newData[index] = {...newData[index], updating: true};
+                        return newData;
+                    });
+
+                    fetch(`${process.env.REACT_APP_API_URL}/last-price/${trade.ticker}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            // Compute updated profit and profitPercentage using the fresh lastPrice
+                            const lastPrice = data.lastPrice;
+                            const avgCost = trade.totalCost / trade.totalQuantity;
+                            let updatedProfit, updatedProfitPercentage;
+                            if (trade.totalQuantity > 0) {
+                                updatedProfit = (lastPrice - avgCost) * trade.totalQuantity;
+                                updatedProfitPercentage = ((lastPrice / avgCost) - 1) * 100;
+                            } else { // For short positions
+                                updatedProfit = (avgCost - lastPrice) * Math.abs(trade.totalQuantity);
+                                updatedProfitPercentage = ((avgCost / lastPrice) - 1) * 100;
+                            }
+                            // Update the specific row with new values and mark updating as false.
+                            setSummaryData(prev => {
+                                const newData = [...prev];
+                                newData[index] = {
+                                    ...newData[index],
+                                    currentPrice: lastPrice, // update currentPrice as well
+                                    profit: updatedProfit,
+                                    profitPercentage: updatedProfitPercentage,
+                                    updating: false
+                                };
+                                return newData;
+                            });
+                        })
+                        .catch(err => {
+                            console.error(`Error fetching last price for ${trade.ticker}:`, err);
+                            // On error, simply mark updating as false so N/A is shown.
+                            setSummaryData(prev => {
+                                const newData = [...prev];
+                                newData[index] = {...newData[index], updating: false};
+                                return newData;
+                            });
+                        });
+                }
+            });
+        }
+    }, [loading, summaryData, lastPriceUpdatesLaunched]);
 
     // Sort the data based on sortConfig
     const sortedData = [...summaryData].sort((a, b) => {
@@ -98,17 +155,17 @@ function SummaryPage() {
     };
 
     const columns = [
-        { key: "ticker", label: "Ticker" },
-        { key: "source", label: "Source" },
-        { key: "type", label: "Type" },
-        { key: "totalQuantity", label: "Total Quantity" },
-        { key: "totalCost", label: "Net Cost" },
-        { key: "lastPrice", label: "Last Trade Price" },
-        { key: "currentPrice", label: "Current Price" },
-        { key: "profit", label: "Profit" },
-        { key: "profitPercentage", label: "Profit (%)" },
-        { key: "holdingPeriod", label: "Holding Period (days)" },
-        { key: "tradeCount", label: "Trade Count" },
+        {key: "ticker", label: "Ticker"},
+        {key: "source", label: "Source"},
+        {key: "type", label: "Type"},
+        {key: "totalQuantity", label: "Total Quantity"},
+        {key: "totalCost", label: "Net Cost"},
+        {key: "lastPrice", label: "Last Trade Price"},
+        {key: "currentPrice", label: "Current Price"},
+        {key: "profit", label: "Profit"},
+        {key: "profitPercentage", label: "Profit (%)"},
+        {key: "holdingPeriod", label: "Holding Period (days)"},
+        {key: "tradeCount", label: "Trade Count"},
     ];
 
     return (
@@ -212,16 +269,29 @@ function SummaryPage() {
                                     <TableCell>${formatNumber(trade.totalCost)}</TableCell>
                                     <TableCell>{trade.lastPrice ? `$${formatNumber(trade.lastPrice)}` : "N/A"}</TableCell>
                                     <TableCell>{trade.currentPrice ? `$${formatNumber(trade.currentPrice)}` : "N/A"}</TableCell>
-                                    <TableCell
-                                        sx={{
-                                            color: trade.profit >= 0 ? "green" : "red",
-                                        }}
-                                    >
-                                        {trade.profit !== null ? `$${formatNumber(trade.profit)}` : "N/A"}
-                                    </TableCell>
+                                    {/* Profit Column Cell */}
                                     <TableCell>
-                                        {trade.profitPercentage !== null ? `${formatNumber(trade.profitPercentage)}%` : "N/A"}
+                                        {trade.updating ? (
+                                            <CircularProgress size={16}/>
+                                        ) : trade.profit !== null ? (
+                                            <span style={{color: "black"}}>${formatNumber(trade.profit)}</span>
+                                        ) : (
+                                            <span style={{color: "lightgray"}}>N/A</span>
+                                        )}
                                     </TableCell>
+
+                                    {/* Profit Percentage Column Cell */}
+                                    <TableCell>
+                                        {trade.updating ? (
+                                            <CircularProgress size={16}/>
+                                        ) : trade.profitPercentage !== null ? (
+                                            <span
+                                                style={{color: "black"}}>{formatNumber(trade.profitPercentage)}%</span>
+                                        ) : (
+                                            <span style={{color: "lightgray"}}>N/A</span>
+                                        )}
+                                    </TableCell>
+
                                     <TableCell>{trade.holdingPeriod !== null ? trade.holdingPeriod : "N/A"}</TableCell>
                                     <TableCell>
                                         {trade.tradeCount !== undefined

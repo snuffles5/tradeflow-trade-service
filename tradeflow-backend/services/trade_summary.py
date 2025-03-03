@@ -2,6 +2,7 @@
 from datetime import datetime
 from utils.logger import log
 
+
 def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
     """
     Merges trades into summary groups based on merge_keys.

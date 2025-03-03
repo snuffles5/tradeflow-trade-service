@@ -1,3 +1,4 @@
+import random
 import time
 from utils.logger import log
 from services.providers.factory import PriceProviderFactory
@@ -40,7 +41,8 @@ class PriceProvider:
     def fetch_from_provider(self, ticker):
         log.trace(f"Delegating fetch for '{ticker}' to YahooPriceProvider.")
         try:
-            return 0
+            time.sleep(random.uniform(0.3, 2))  # Simulate network latency
+            return 0.01
             return self.yahoo_provider.get_price(ticker)
         except Exception as e:
             log.error(f"Failed to fetch price for '{ticker}' from Yahoo: {str(e)}")
