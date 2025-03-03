@@ -268,7 +268,15 @@ function SummaryPage() {
                                     </TableCell>
                                     <TableCell>${formatNumber(trade.totalCost)}</TableCell>
                                     <TableCell>{trade.lastPrice ? `$${formatNumber(trade.lastPrice)}` : "N/A"}</TableCell>
-                                    <TableCell>{trade.currentPrice ? `$${formatNumber(trade.currentPrice)}` : "N/A"}</TableCell>
+                                    <TableCell>
+                                        {trade.updating ? (
+                                            <CircularProgress size={16}/>
+                                        ) : trade.currentPrice !== null && trade.currentPrice !== undefined ? (
+                                            <span style={{color: "black"}}>${formatNumber(trade.currentPrice)}</span>
+                                        ) : (
+                                            <span style={{color: "lightgray"}}>N/A</span>
+                                        )}
+                                    </TableCell>
                                     {/* Profit Column Cell */}
                                     <TableCell>
                                         {trade.updating ? (
