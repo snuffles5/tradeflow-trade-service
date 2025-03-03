@@ -3,6 +3,39 @@ from datetime import datetime
 from utils.logger import log
 
 
+def calculate_holding_period(trades):
+    """
+    Calculates holding period in days for a given list of trades.
+    - For closed cycles (position goes from zero to nonzero back to zero): returns the duration of the last closed cycle.
+    - For open positions (nonzero cumulative quantity at the end): returns the duration from the last time position was zero to today.
+    """
+    try:
+        # Sort trades by date (assuming created_at is in "MM/DD/YYYY" format)
+        sorted_trades = sorted(trades, key=lambda t: datetime.strptime(t['created_at'], "%m/%d/%Y"))
+    except Exception as e:
+        return None
+
+    cumulative = 0
+    current_cycle_start = None
+    last_closed_cycle_duration = None
+
+    for trade in sorted_trades:
+        date = datetime.strptime(trade['created_at'], "%m/%d/%Y")
+        # If the position is currently zero, mark the start of a new cycle.
+        if cumulative == 0:
+            current_cycle_start = date
+        cumulative += trade.get('quantity', 0)
+        # If the cumulative sum returns to zero, mark a closed cycle.
+        if cumulative == 0 and current_cycle_start:
+            last_closed_cycle_duration = (date - current_cycle_start).days
+            current_cycle_start = None  # reset for any new cycle
+
+    # For an open position, calculate from the last cycle start until now.
+    if cumulative != 0 and current_cycle_start:
+        return (datetime.now() - current_cycle_start).days
+    return last_closed_cycle_duration
+
+
 def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
     """
     Merges trades into summary groups based on merge_keys.
@@ -102,9 +135,9 @@ def merge_trades(trades, merge_keys=['ticker', 'source', 'type']):
 
     # Compute derived metrics for each group.
     for key, data in summary.items():
-        if data['earliestDate'] and data['latestDate']:
-            data['holdingPeriod'] = (data['latestDate'] - data['earliestDate']).days
-            log.trace("Computed holdingPeriod for key %s: %d days", key, data['holdingPeriod'])
+        # Compute holding period using the helper method that analyzes trade cycles.
+        data['holdingPeriod'] = calculate_holding_period(data['trades'])
+        log.trace("Computed holdingPeriod for key %s: %s days", key, data['holdingPeriod'])
 
         if data['totalQuantity'] == 0:
             # Closed position: compute realized profit.
