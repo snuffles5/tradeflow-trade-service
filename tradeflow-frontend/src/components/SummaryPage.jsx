@@ -75,11 +75,13 @@ function SummaryPage() {
                         return newData;
                     });
 
-                    fetch(`${process.env.REACT_APP_API_URL}/last-price/${trade.ticker}`)
+                    fetch(`${process.env.REACT_APP_API_URL}/stock-info/${trade.ticker}`)
                         .then(res => res.json())
                         .then(data => {
                             // Compute updated profit and profitPercentage using the fresh lastPrice
                             const lastPrice = data.lastPrice;
+                            const changeToday = data.changeToday;
+                            const changeTodayPercentage = data.changeTodayPercentage;
                             const avgCost = trade.totalCost / trade.totalQuantity;
                             let updatedProfit, updatedProfitPercentage;
                             if (trade.totalQuantity > 0) {
@@ -97,6 +99,8 @@ function SummaryPage() {
                                     currentPrice: lastPrice, // update currentPrice as well
                                     profit: updatedProfit,
                                     profitPercentage: updatedProfitPercentage,
+                                    changeToday: changeToday,
+                                    changeTodayPercentage: changeTodayPercentage,
                                     updating: false
                                 };
                                 return newData;
@@ -118,10 +122,14 @@ function SummaryPage() {
 
     // Sort the data based on sortConfig
     const sortedData = [...summaryData].sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "asc" ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "asc" ? 1 : -1;
+        const aValue = a[sortConfig.key] !== null && a[sortConfig.key] !== undefined ? Number(a[sortConfig.key]) : -Infinity;
+        const bValue = b[sortConfig.key] !== null && b[sortConfig.key] !== undefined ? Number(b[sortConfig.key]) : -Infinity;
+
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
     });
+
 
     // Filter data based on search terms
     const filteredData = sortedData.filter((trade) => {
@@ -139,13 +147,15 @@ function SummaryPage() {
         (acc, trade) => {
             acc.totalQuantity += Number(trade.totalQuantity) || 0;
             acc.totalCost += Number(trade.totalCost) || 0;
-            // For profit, if it's null then we add 0.
             acc.profit += trade.profit !== null ? Number(trade.profit) : 0;
             acc.tradeCount += Number(trade.tradeCount) || (trade.trades ? trade.trades.length : 0);
+            acc.changeToday += trade.changeToday !== null && trade.changeToday !== undefined ? Number(trade.changeToday) : 0;
+            acc.changeTodayPercentage += trade.changeTodayPercentage !== null && trade.changeTodayPercentage !== undefined ? Number(trade.changeTodayPercentage) : 0;
             return acc;
         },
-        {totalQuantity: 0, totalCost: 0, profit: 0, tradeCount: 0}
+        {totalQuantity: 0, totalCost: 0, profit: 0, tradeCount: 0, changeToday: 0, changeTodayPercentage: 0}
     );
+
 
     const handleSort = (key) => {
         setSortConfig((prev) => ({
@@ -164,6 +174,8 @@ function SummaryPage() {
         {key: "currentPrice", label: "Current Price"},
         {key: "profit", label: "Profit"},
         {key: "profitPercentage", label: "Profit (%)"},
+        {key: "changeToday", label: "Change Today"},
+        {key: "changeTodayPercentage", label: "Change Today (%)"},
         {key: "holdingPeriod", label: "Holding Period (days)"},
         {key: "tradeCount", label: "Trade Count"},
     ];
@@ -282,24 +294,52 @@ function SummaryPage() {
                                         {trade.updating ? (
                                             <CircularProgress size={16}/>
                                         ) : trade.profit !== null ? (
-                                            <span style={{color: "black"}}>${formatNumber(trade.profit)}</span>
+                                            <span style={{color: Number(trade.profit) >= 0 ? "green" : "red"}}>
+                                          ${formatNumber(trade.profit)}
+                                        </span>
                                         ) : (
                                             <span style={{color: "lightgray"}}>N/A</span>
                                         )}
                                     </TableCell>
-
                                     {/* Profit Percentage Column Cell */}
                                     <TableCell>
                                         {trade.updating ? (
                                             <CircularProgress size={16}/>
                                         ) : trade.profitPercentage !== null ? (
                                             <span
-                                                style={{color: "black"}}>{formatNumber(trade.profitPercentage)}%</span>
+                                                style={{color: Number(trade.profitPercentage) >= 0 ? "green" : "red"}}>
+                                          {formatNumber(trade.profitPercentage)}%
+                                        </span>
+                                        ) : (
+                                            <span style={{color: "lightgray"}}>N/A</span>
+                                        )}
+                                    </TableCell>
+                                    {/* Change Today Column Cell */}
+                                    <TableCell>
+                                        {trade.updating ? (
+                                            <CircularProgress size={16}/>
+                                        ) : trade.changeToday !== null && trade.changeToday !== undefined ? (
+                                            <span style={{color: Number(trade.changeToday) >= 0 ? "green" : "red"}}>
+                                          ${formatNumber(trade.changeToday)}
+                                        </span>
                                         ) : (
                                             <span style={{color: "lightgray"}}>N/A</span>
                                         )}
                                     </TableCell>
 
+                                    {/* Change Today Percentage Column Cell */}
+                                    <TableCell>
+                                        {trade.updating ? (
+                                            <CircularProgress size={16}/>
+                                        ) : trade.changeTodayPercentage !== null && trade.changeTodayPercentage !== undefined ? (
+                                            <span
+                                                style={{color: Number(trade.changeTodayPercentage) >= 0 ? "green" : "red"}}>
+                                          {formatNumber(trade.changeTodayPercentage)}%
+                                        </span>
+                                        ) : (
+                                            <span style={{color: "lightgray"}}>N/A</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell>{trade.holdingPeriod !== null ? trade.holdingPeriod : "N/A"}</TableCell>
                                     <TableCell>
                                         {trade.tradeCount !== undefined
@@ -318,7 +358,6 @@ function SummaryPage() {
                                     borderColor: "divider",
                                 }}
                             >
-                                {/* Span the first three columns for a Totals label */}
                                 <TableCell colSpan={3}>Totals</TableCell>
                                 <TableCell>
                                     {totals.totalQuantity === 0
@@ -336,10 +375,24 @@ function SummaryPage() {
                                     ${formatNumber(totals.profit)}
                                 </TableCell>
                                 <TableCell/>
-                                <TableCell/>
+                                <TableCell
+                                    sx={{
+                                        color: totals.changeToday >= 0 ? "green" : "red",
+                                    }}
+                                >
+                                    ${formatNumber(totals.changeToday)}
+                                </TableCell>
+                                <TableCell
+                                    sx={{
+                                        color: totals.changeTodayPercentage >= 0 ? "green" : "red",
+                                    }}
+                                >
+                                    {formatNumber(totals.changeTodayPercentage)}%
+                                </TableCell>
                                 <TableCell>{Number(totals.tradeCount).toLocaleString()}</TableCell>
                             </TableRow>
                         </TableFooter>
+
                     </Table>
                 </TableContainer>
             )}

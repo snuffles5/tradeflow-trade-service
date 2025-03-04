@@ -1,8 +1,10 @@
 import time
 import logging
+from datetime import datetime
 from typing import List, Tuple
 
-from services.providers.base_finance_provider import BaseFinanceProvider
+from app.models import Stock
+from services.providers.base_finance_provider import BaseFinanceProvider, ChangeToday
 from services.providers.google_finance_provider import GoogleFinanceProvider
 from services.providers.yahoo_finance_provider import YahooFinanceProvider
 
@@ -13,7 +15,8 @@ class ProviderFactory:
         Initialize the factory with a list of providers and a cache_duration (in seconds).
         """
         self.cache_duration = cache_duration
-        self.cache: dict[str, Tuple[float, float]] = {}  # mapping: symbol -> (price, timestamp)
+        # Cache mapping: symbol -> Stock object
+        self.cache: dict[str, Stock] = {}
 
         if providers is not None:
             self.providers = providers
@@ -23,34 +26,46 @@ class ProviderFactory:
                 YahooFinanceProvider(),
             ]
 
-    def get_price(self, symbol: str) -> float:
+    def get_stock(self, symbol: str) -> Stock:
         """
-        Fetch the price for the symbol.
-        First check if there's a valid-cached value; if not, iterate over providers.
+        Fetch the Stock data for the symbol.
+        First, check if there's a valid cached Stock; if not, iterate over providers.
         """
-        current_time = time.time()
+        now = datetime.now()
 
         # Check if the symbol is in the cache and not expired
         if symbol in self.cache:
-            cached_price, timestamp = self.cache[symbol]
-            if current_time - timestamp < self.cache_duration:
-                logging.info(f"Returning cached price for {symbol}")
-                return cached_price
+            cached_stock = self.cache[symbol]
+            elapsed = (now - cached_stock.last_updated).total_seconds()
+            if elapsed < self.cache_duration:
+                logging.info(f"Returning cached stock for {symbol}")
+                return cached_stock
             else:
-                # Cache expired; remove entry
                 del self.cache[symbol]
 
-        # Iterate over providers
         last_exception = None
         for provider in self.providers:
             try:
-                price = provider.get_price(symbol)
-                # Update cache with new value and current timestamp
-                self.cache[symbol] = (price, current_time)
-                return price
+                # Assume provider.get_price(symbol) returns a float price.
+                stock = provider.get_stock(symbol)
+                self.cache[symbol] = stock
+                return stock
             except Exception as e:
                 logging.warning(f"Provider {provider.__class__.__name__} failed for {symbol}: {e}")
                 last_exception = e
 
-        # If all providers fail, raise the last encountered exception
         raise last_exception
+
+    def get_price(self, symbol: str) -> float:
+        """
+        Convenience method to get the last price for a symbol.
+        """
+        return self.get_stock(symbol).price
+
+    def get_change_today(self, symbol: str) -> ChangeToday:
+        """
+        Convenience method to get today's change and change percentage for a symbol.
+        Returns ChangeToday namedtuple.
+        """
+        stock = self.get_stock(symbol)
+        return ChangeToday(change=stock.change_today, change_percentage=stock.change_today_percentage)

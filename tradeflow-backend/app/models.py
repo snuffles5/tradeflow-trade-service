@@ -1,6 +1,8 @@
 # app/models.py
 from .database import db
 from datetime import datetime
+from dataclasses import dataclass
+
 
 class Trade(db.Model):
     __tablename__ = "trades"
@@ -20,3 +22,11 @@ class Trade(db.Model):
 
     def __repr__(self):
         return f"<Trade {self.id} - {self.ticker}>"
+
+
+@dataclass
+class Stock:
+    price: float
+    change_today: float
+    change_today_percentage: float
+    last_updated: datetime

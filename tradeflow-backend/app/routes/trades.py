@@ -237,15 +237,18 @@ def trade_summary():
     return jsonify(result), 200
 
 
-@trades_bp.route("/last-price/<ticker>", methods=["GET"])
-def get_last_price(ticker):
+@trades_bp.route("/stock-info/<ticker>", methods=["GET"])
+def get_stock_info(ticker):
     """
     New endpoint to fetch the latest market price for a given ticker.
     """
     try:
         # Use the existing price provider (with caching) to get the latest price.
-        price = provider_factory.get_price(ticker)
-        return jsonify({"ticker": ticker, "lastPrice": price}), 200
+        stock = provider_factory.get_stock(ticker)
+        return jsonify({"ticker": ticker, "lastPrice": stock.price,
+                        "changeToday": stock.change_today,
+                        "changeTodayPercentage": stock.change_today_percentage,
+                        }), 200
     except Exception as e:
         current_app.logger.error(f"Error fetching last price for {ticker}: {str(e)}")
         return jsonify({"error": "Failed to get last price"}), 500
