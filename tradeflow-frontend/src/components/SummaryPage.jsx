@@ -15,6 +15,7 @@ import {
     CircularProgress,
     Box,
     Grid,
+    FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, FormControlLabel
 } from "@mui/material";
 
 // Helper function to format numbers with commas and fixed decimals
@@ -33,6 +34,43 @@ function SummaryPage() {
     const [loading, setLoading] = useState(true);
     const [aggLoading, setAggLoading] = useState(true);
     const [lastPriceUpdatesLaunched, setLastPriceUpdatesLaunched] = useState(false);
+    const [visibleColumns, setVisibleColumns] = useState({
+        ticker: true,
+        source: true,
+        type: true,
+        totalQuantity: false,
+        totalCost: false,
+        lastPrice: true,
+        currentPrice: true,
+        profit: true,
+        profitPercentage: true,
+        changeToday: true,
+        changeTodayPercentage: true,
+        holdingPeriod: false,
+        tradeCount: false,
+    });
+    const [includeClosedPositions, setIncludeClosedPositions] = useState(false);
+    // Extra settings options
+    const [autoRefresh, setAutoRefresh] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
+    const [highlightSignificant, setHighlightSignificant] = useState(true);
+
+    useEffect(() => {
+        if (autoRefresh) {
+            const interval = setInterval(() => {
+                fetch(`${process.env.REACT_APP_API_URL}/aggregated-trades`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        setSummaryData(data);
+                    })
+                    .catch((err) => {
+                        console.error("Error fetching trade summary:", err);
+                    });
+            }, 60000); // Refresh every 60 seconds
+            return () => clearInterval(interval);
+        }
+    }, [autoRefresh]);
+
 
     useEffect(() => {
         // Fetch detailed trade summary data
@@ -134,13 +172,16 @@ function SummaryPage() {
     // Filter data based on search terms
     const filteredData = sortedData.filter((trade) => {
         const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
-        return searchTerms.every(
+        const matchesSearch = searchTerms.every(
             (term) =>
                 trade.ticker.toLowerCase().includes(term) ||
                 trade.source.toLowerCase().includes(term) ||
                 trade.type.toLowerCase().includes(term)
         );
+        const includeTrade = includeClosedPositions ? true : trade.totalQuantity !== 0;
+        return matchesSearch && includeTrade;
     });
+
 
     // Pre-calculate totals from filtered data
     const totals = filteredData.reduce(
@@ -181,7 +222,14 @@ function SummaryPage() {
     ];
 
     return (
-        <Container maxWidth="md" sx={{mt: 4}}>
+        <Container
+            maxWidth="lg"
+            sx={{
+                mt: 4,
+                backgroundColor: darkMode ? "#333" : "inherit",
+                color: darkMode ? "white" : "inherit"
+            }}
+        >
             <Typography variant="h4" gutterBottom>
                 Trades Summary
             </Typography>
@@ -234,6 +282,87 @@ function SummaryPage() {
                 </Paper>
             ) : null}
 
+            <Box sx={{display: "flex", alignItems: "center", mb: 2, border: "1px solid lightgray", p: 1}}>
+                <FormControl sx={{minWidth: 200, mr: 2}}>
+                    <InputLabel id="columns-select-label">Columns</InputLabel>
+                    <Select
+                        labelId="columns-select-label"
+                        multiple
+                        value={Object.keys(visibleColumns).filter(key => visibleColumns[key])}
+                        onChange={(e) => {
+                            const selected = e.target.value;
+                            const newVisible = {};
+                            columns.forEach(col => {
+                                newVisible[col.key] = col.key === "ticker" ? true : selected.includes(col.key);
+                            });
+                            setVisibleColumns(newVisible);
+                        }}
+                        label="Columns"
+                        renderValue={(selected) =>
+                            selected.length > 3
+                                ? `${selected.slice(0, 3).map(key => {
+                                    const col = columns.find(c => c.key === key);
+                                    return col ? col.label : key;
+                                }).join(", ")}...`
+                                : selected.map(key => {
+                                    const col = columns.find(c => c.key === key);
+                                    return col ? col.label : key;
+                                }).join(", ")
+                        }
+                    >
+                        {columns.map(col => (
+                            <MenuItem key={col.key} value={col.key}>
+                                <Checkbox checked={visibleColumns[col.key]} disabled={col.key === "ticker"}/>
+                                <ListItemText primary={col.label}/>
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={includeClosedPositions}
+                            onChange={(e) => setIncludeClosedPositions(e.target.checked)}
+                        />
+                    }
+                    label="Include Closed Positions"
+                    sx={{mr: 2}}
+                />
+                {/* Extra Options */}
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={autoRefresh}
+                            onChange={(e) => setAutoRefresh(e.target.checked)}
+                        />
+                    }
+                    label="Auto Refresh"
+                    sx={{mr: 2}}
+                />
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={darkMode}
+                            onChange={(e) => setDarkMode(e.target.checked)}
+                        />
+                    }
+                    label="Dark Mode"
+                    sx={{mr: 2}}
+                />
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={highlightSignificant}
+                            onChange={(e) => setHighlightSignificant(e.target.checked)}
+                        />
+                    }
+                    label="Highlight Significant Changes"
+                />
+            </Box>
+
+
             {/* Search Filter */}
             <TextField
                 label="Search by Ticker, Source, or Type"
@@ -251,147 +380,272 @@ function SummaryPage() {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                {columns.map(({key, label}) => (
-                                    <TableCell key={key}>
-                                        <TableSortLabel
-                                            active={sortConfig.key === key}
-                                            direction={sortConfig.key === key ? sortConfig.direction : "asc"}
-                                            onClick={() => handleSort(key)}
-                                        >
-                                            {label}
+                                {visibleColumns.ticker && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "ticker"}
+                                                        direction={sortConfig.key === "ticker" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("ticker")}>
+                                            Ticker
                                         </TableSortLabel>
                                     </TableCell>
-                                ))}
+                                )}
+                                {visibleColumns.source && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "source"}
+                                                        direction={sortConfig.key === "source" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("source")}>
+                                            Source
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.type && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "type"}
+                                                        direction={sortConfig.key === "type" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("type")}>
+                                            Type
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.totalQuantity && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "totalQuantity"}
+                                                        direction={sortConfig.key === "totalQuantity" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("totalQuantity")}>
+                                            Total Quantity
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.totalCost && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "totalCost"}
+                                                        direction={sortConfig.key === "totalCost" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("totalCost")}>
+                                            Net Cost
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.lastPrice && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "lastPrice"}
+                                                        direction={sortConfig.key === "lastPrice" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("lastPrice")}>
+                                            Last Trade Price
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.currentPrice && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "currentPrice"}
+                                                        direction={sortConfig.key === "currentPrice" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("currentPrice")}>
+                                            Current Price
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.profit && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "profit"}
+                                                        direction={sortConfig.key === "profit" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("profit")}>
+                                            Profit
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.profitPercentage && (
+                                    <TableCell sx={{borderRight: "3px solid gray"}}>
+                                        <TableSortLabel active={sortConfig.key === "profitPercentage"}
+                                                        direction={sortConfig.key === "profitPercentage" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("profitPercentage")}>
+                                            Profit (%)
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.changeToday && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "changeToday"}
+                                                        direction={sortConfig.key === "changeToday" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("changeToday")}>
+                                            Change Today
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.changeTodayPercentage && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "changeTodayPercentage"}
+                                                        direction={sortConfig.key === "changeTodayPercentage" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("changeTodayPercentage")}>
+                                            Change Today (%)
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.holdingPeriod && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "holdingPeriod"}
+                                                        direction={sortConfig.key === "holdingPeriod" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("holdingPeriod")}>
+                                            Holding Period (days)
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
+                                {visibleColumns.tradeCount && (
+                                    <TableCell>
+                                        <TableSortLabel active={sortConfig.key === "tradeCount"}
+                                                        direction={sortConfig.key === "tradeCount" ? sortConfig.direction : "asc"}
+                                                        onClick={() => handleSort("tradeCount")}>
+                                            Trade Count
+                                        </TableSortLabel>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         </TableHead>
-                        <TableBody>
-                            {filteredData.map((trade) => (
-                                <TableRow key={`${trade.ticker}-${trade.source}-${trade.type}`}>
-                                    <TableCell>{trade.ticker}</TableCell>
-                                    <TableCell>{trade.source}</TableCell>
-                                    <TableCell>{trade.type}</TableCell>
-                                    <TableCell
-                                        sx={{
-                                            color: trade.totalQuantity === 0 ? "blue" : "inherit",
-                                            fontWeight: trade.totalQuantity === 0 ? "bold" : "normal",
-                                        }}
-                                    >
-                                        {trade.totalQuantity === 0 ? "Closed" : Number(trade.totalQuantity).toLocaleString()}
-                                    </TableCell>
-                                    <TableCell>${formatNumber(trade.totalCost)}</TableCell>
-                                    <TableCell>{trade.lastPrice ? `$${formatNumber(trade.lastPrice)}` : "N/A"}</TableCell>
-                                    <TableCell>
-                                        {trade.updating ? (
-                                            <CircularProgress size={16}/>
-                                        ) : trade.currentPrice !== null && trade.currentPrice !== undefined ? (
-                                            <span style={{color: "black"}}>${formatNumber(trade.currentPrice)}</span>
-                                        ) : (
-                                            <span style={{color: "lightgray"}}>N/A</span>
-                                        )}
-                                    </TableCell>
-                                    {/* Profit Column Cell */}
-                                    <TableCell>
-                                        {trade.updating ? (
-                                            <CircularProgress size={16}/>
-                                        ) : trade.profit !== null ? (
-                                            <span style={{color: Number(trade.profit) >= 0 ? "green" : "red"}}>
-                                          ${formatNumber(trade.profit)}
-                                        </span>
-                                        ) : (
-                                            <span style={{color: "lightgray"}}>N/A</span>
-                                        )}
-                                    </TableCell>
-                                    {/* Profit Percentage Column Cell */}
-                                    <TableCell>
-                                        {trade.updating ? (
-                                            <CircularProgress size={16}/>
-                                        ) : trade.profitPercentage !== null ? (
-                                            <span
-                                                style={{color: Number(trade.profitPercentage) >= 0 ? "green" : "red"}}>
-                                          {formatNumber(trade.profitPercentage)}%
-                                        </span>
-                                        ) : (
-                                            <span style={{color: "lightgray"}}>N/A</span>
-                                        )}
-                                    </TableCell>
-                                    {/* Change Today Column Cell */}
-                                    <TableCell>
-                                        {trade.updating ? (
-                                            <CircularProgress size={16}/>
-                                        ) : trade.changeToday !== null && trade.changeToday !== undefined ? (
-                                            <span style={{color: Number(trade.changeToday) >= 0 ? "green" : "red"}}>
-                                          ${formatNumber(trade.changeToday)}
-                                        </span>
-                                        ) : (
-                                            <span style={{color: "lightgray"}}>N/A</span>
-                                        )}
-                                    </TableCell>
 
-                                    {/* Change Today Percentage Column Cell */}
-                                    <TableCell>
-                                        {trade.updating ? (
-                                            <CircularProgress size={16}/>
-                                        ) : trade.changeTodayPercentage !== null && trade.changeTodayPercentage !== undefined ? (
-                                            <span
-                                                style={{color: Number(trade.changeTodayPercentage) >= 0 ? "green" : "red"}}>
-                                          {formatNumber(trade.changeTodayPercentage)}%
-                                        </span>
-                                        ) : (
-                                            <span style={{color: "lightgray"}}>N/A</span>
+                        <TableBody>
+                            {filteredData.map((trade) => {
+                                const highlight = highlightSignificant && (
+                                    (trade.profit !== null && Math.abs(trade.profit) > 1000) ||
+                                    (trade.changeTodayPercentage !== null && Math.abs(trade.changeTodayPercentage) > 5)
+                                );
+                                return (
+                                    <TableRow key={`${trade.ticker}-${trade.source}-${trade.type}`}
+                                              sx={highlight ? {backgroundColor: "lightyellow"} : {}}>
+                                        {visibleColumns.ticker && <TableCell>{trade.ticker}</TableCell>}
+                                        {visibleColumns.source && <TableCell>{trade.source}</TableCell>}
+                                        {visibleColumns.type && <TableCell>{trade.type}</TableCell>}
+                                        {visibleColumns.totalQuantity && (
+                                            <TableCell sx={{
+                                                color: trade.totalQuantity === 0 ? "blue" : "inherit",
+                                                fontWeight: trade.totalQuantity === 0 ? "bold" : "normal",
+                                            }}>
+                                                {trade.totalQuantity === 0 ? "Closed" : Number(trade.totalQuantity).toLocaleString()}
+                                            </TableCell>
                                         )}
-                                    </TableCell>
-                                    <TableCell>{trade.holdingPeriod !== null ? trade.holdingPeriod : "N/A"}</TableCell>
-                                    <TableCell>
-                                        {trade.tradeCount !== undefined
-                                            ? Number(trade.tradeCount).toLocaleString()
-                                            : trade.trades
-                                                ? trade.trades.length
-                                                : "N/A"}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                                        {visibleColumns.totalCost &&
+                                            <TableCell>${formatNumber(trade.totalCost)}</TableCell>}
+                                        {visibleColumns.lastPrice &&
+                                            <TableCell>{trade.lastPrice ? `$${formatNumber(trade.lastPrice)}` : "N/A"}</TableCell>}
+                                        {visibleColumns.currentPrice && (
+                                            <TableCell>
+                                                {trade.updating ? (
+                                                    <CircularProgress size={16}/>
+                                                ) : trade.currentPrice !== null && trade.currentPrice !== undefined ? (
+                                                    <span
+                                                        style={{color: "black"}}>${formatNumber(trade.currentPrice)}</span>
+                                                ) : (
+                                                    <span style={{color: "lightgray"}}>N/A</span>
+                                                )}
+                                            </TableCell>
+                                        )}
+                                        {visibleColumns.profit && (
+                                            <TableCell>
+                                                {trade.updating ? (
+                                                    <CircularProgress size={16}/>
+                                                ) : trade.profit !== null ? (
+                                                    <span style={{color: Number(trade.profit) >= 0 ? "green" : "red"}}>
+                                                                ${formatNumber(trade.profit)}
+                                                    </span>
+                                                    ) : (
+                                                    <span style={{color: "lightgray"}}>N/A</span>
+                                                )}
+                                            </TableCell>
+                                        )}
+                                        {visibleColumns.profitPercentage && (
+                                            <TableCell sx={{borderRight: "3px solid gray"}}>
+                                                {trade.updating ? (
+                                                    <CircularProgress size={16}/>
+                                                ) : trade.profitPercentage !== null ? (
+                                                    <span
+                                                        style={{color: Number(trade.profitPercentage) >= 0 ? "green" : "red"}}>
+                                                        {formatNumber(trade.profitPercentage)}%
+                                                    </span>
+                                                ) : (
+                                                    <span style={{color: "lightgray"}}>N/A</span>
+                                                )}
+                                            </TableCell>
+                                        )}
+                                        {visibleColumns.changeToday && (
+                                            <TableCell>
+                                                {trade.updating ? (
+                                                    <CircularProgress size={16}/>
+                                                ) : trade.changeToday !== null && trade.changeToday !== undefined ? (
+                                                    <span
+                                                        style={{color: Number(trade.changeToday) >= 0 ? "green" : "red"}}>
+                ${formatNumber(trade.changeToday)}
+              </span>
+                                                ) : (
+                                                    <span style={{color: "lightgray"}}>N/A</span>
+                                                )}
+                                            </TableCell>
+                                        )}
+                                        {visibleColumns.changeTodayPercentage && (
+                                            <TableCell>
+                                                {trade.updating ? (
+                                                    <CircularProgress size={16}/>
+                                                ) : trade.changeTodayPercentage !== null && trade.changeTodayPercentage !== undefined ? (
+                                                    <span
+                                                        style={{color: Number(trade.changeTodayPercentage) >= 0 ? "green" : "red"}}>
+                {formatNumber(trade.changeTodayPercentage)}%
+              </span>
+                                                ) : (
+                                                    <span style={{color: "lightgray"}}>N/A</span>
+                                                )}
+                                            </TableCell>
+                                        )}
+                                        {visibleColumns.holdingPeriod &&
+                                            <TableCell>{trade.holdingPeriod !== null ? trade.holdingPeriod : "N/A"}</TableCell>}
+                                        {visibleColumns.tradeCount && (
+                                            <TableCell>
+                                                {trade.tradeCount !== undefined
+                                                    ? Number(trade.tradeCount).toLocaleString()
+                                                    : trade.trades
+                                                        ? trade.trades.length
+                                                        : "N/A"}
+                                            </TableCell>
+                                        )}
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
+
                         <TableFooter>
-                            <TableRow
-                                sx={{
-                                    borderTop: "3px solid",
-                                    borderColor: "divider",
-                                }}
-                            >
-                                <TableCell colSpan={3}>Totals</TableCell>
-                                <TableCell>
-                                    {totals.totalQuantity === 0
-                                        ? "Closed"
-                                        : Number(totals.totalQuantity).toLocaleString()}
-                                </TableCell>
-                                <TableCell>${formatNumber(totals.totalCost)}</TableCell>
-                                <TableCell/>
-                                <TableCell/>
-                                <TableCell
-                                    sx={{
-                                        color: totals.profit >= 0 ? "green" : "red",
-                                    }}
-                                >
-                                    ${formatNumber(totals.profit)}
-                                </TableCell>
-                                <TableCell/>
-                                <TableCell
-                                    sx={{
-                                        color: totals.changeToday >= 0 ? "green" : "red",
-                                    }}
-                                >
-                                    ${formatNumber(totals.changeToday)}
-                                </TableCell>
-                                <TableCell
-                                    sx={{
-                                        color: totals.changeTodayPercentage >= 0 ? "green" : "red",
-                                    }}
-                                >
-                                    {formatNumber(totals.changeTodayPercentage)}%
-                                </TableCell>
-                                <TableCell>{Number(totals.tradeCount).toLocaleString()}</TableCell>
+                            <TableRow sx={{borderTop: "3px solid", borderColor: "divider"}}>
+                                {visibleColumns.ticker && <TableCell>Totals</TableCell>}
+                                {visibleColumns.source && <TableCell/>}
+                                {visibleColumns.type && <TableCell/>}
+                                {visibleColumns.totalQuantity && (
+                                    <TableCell>
+                                        {totals.totalQuantity === 0 ? "Closed" : Number(totals.totalQuantity).toLocaleString()}
+                                    </TableCell>
+                                )}
+                                {visibleColumns.totalCost && <TableCell>${formatNumber(totals.totalCost)}</TableCell>}
+                                {visibleColumns.lastPrice && <TableCell/>}
+                                {visibleColumns.currentPrice && <TableCell/>}
+                                {visibleColumns.profit && (
+                                    <TableCell sx={{
+                                        color: totals.profit >= 0 ? "green" : "red"
+                                    }}>
+                                        ${formatNumber(totals.profit)}
+                                    </TableCell>
+                                )}
+                                {visibleColumns.profitPercentage && (
+                                    <TableCell sx={{borderRight: "3px solid gray"}}></TableCell>
+                                )}
+                                {visibleColumns.changeToday && (
+                                    <TableCell sx={{color: totals.changeToday >= 0 ? "green" : "red"}}>
+                                        ${formatNumber(totals.changeToday)}
+                                    </TableCell>
+                                )}
+                                {visibleColumns.changeTodayPercentage && (
+                                    <TableCell sx={{color: totals.changeTodayPercentage >= 0 ? "green" : "red"}}>
+                                        {formatNumber(totals.changeTodayPercentage)}%
+                                    </TableCell>
+                                )}
+                                {visibleColumns.holdingPeriod && <TableCell/>}
+                                {visibleColumns.tradeCount &&
+                                    <TableCell>{Number(totals.tradeCount).toLocaleString()}</TableCell>}
                             </TableRow>
                         </TableFooter>
+
 
                     </Table>
                 </TableContainer>
