@@ -299,5 +299,15 @@
     "quantity": 17.0,
     "price_per_unit": "25.80",
     "date": "03/03/2025"
+  },
+  {
+    "ticker": "VGK",
+    "created_at": "03/05/2025",
+    "type": "Joint",
+    "source": "Interactive IL",
+    "transaction_type": "Buy",
+    "quantity": 8.0,
+    "price_per_unit": "70.20",
+    "date": "03/05/2025"
   }
 ]
