@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, current_app
 
 from services.providers.factory import ProviderFactory
 from services.trade_summary import merge_trades
-from utils.consts import BACKEND_PROJECT_ROOT_PATH, DATA_FOLDER_PATH
+from utils.consts import DATA_FOLDER_PATH
 from ..database import db
 from ..models import Trade
 from ..schemas import TradeSchema
