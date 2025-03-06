@@ -21,7 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-/tradeflow-backend/venv/
+venv/
+/.idea/
 /tradeflow-frontend/node_modules/
-/*.env
-/.idea/*

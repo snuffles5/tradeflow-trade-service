@@ -4,4 +4,7 @@ Flask-Cors==3.0.10
 marshmallow==3.19.0
 mysqlclient==2.1.1  # Or PyMySQL==1.0.3 if you prefer pure Python driver
 gunicorn==20.1.0    # Required by EB for production
-requests
+Flask-Migrate==3.1.0
+ib_insync==0.9.84
+lxml==4.9.3
+beautifulsoup4==4.12.2
