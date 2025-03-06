@@ -309,5 +309,15 @@
     "quantity": 8.0,
     "price_per_unit": "70.20",
     "date": "03/05/2025"
+  },
+  {
+    "ticker": "PLTR",
+    "created_at": "03/05/2025",
+    "type": "Private",
+    "source": "One Zero",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": "88.98",
+    "date": "03/05/2025"
   }
 ]
