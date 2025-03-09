@@ -1,3 +1,10 @@
+/*
+src/components/TradesList.jsx
+
+This module renders the TradesList component which fetches and displays a list of trades in a table format.
+It includes sorting and filtering capabilities to help users quickly search and analyze trade data.
+*/
+
 import React, { useEffect, useState } from "react";
 import {
   Container,
@@ -15,7 +22,7 @@ import {
 
 function TradesList() {
   const [trades, setTrades] = useState([]);
-  const [sortConfig, setSortConfig] = useState({ key: "created_at", direction: "desc" });
+  const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "desc" });
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -33,16 +40,15 @@ function TradesList() {
   });
 
   // Filtering logic
-const filteredTrades = sortedTrades.filter((trade) => {
-  const searchTerms = search.toLowerCase().split(" ").filter(term => term); // Split search into words
+  const filteredTrades = sortedTrades.filter((trade) => {
+    const searchTerms = search.toLowerCase().split(" ").filter(term => term); // Split search into words
 
-  return searchTerms.every(term =>
-    trade.ticker.toLowerCase().includes(term) ||
-    trade.source.toLowerCase().includes(term) ||
-    trade.trade_type.toLowerCase().includes(term)
-  );
-});
-
+    return searchTerms.every(term =>
+      trade.ticker.toLowerCase().includes(term) ||
+      trade.source.toLowerCase().includes(term) ||
+      trade.tradeType.toLowerCase().includes(term)
+    );
+  });
 
   const handleSort = (key) => {
     setSortConfig((prev) => ({
@@ -72,13 +78,13 @@ const filteredTrades = sortedTrades.filter((trade) => {
             <TableRow>
               {[
                 { key: "id", label: "ID" },
-                { key: "trade_type", label: "Type" },
+                { key: "tradeType", label: "Type" },
                 { key: "source", label: "Source" },
-                { key: "transaction_type", label: "Transaction Type" },
+                { key: "transactionType", label: "Transaction Type" },
                 { key: "ticker", label: "Ticker" },
                 { key: "quantity", label: "Quantity" },
-                { key: "price_per_unit", label: "Price per Unit" },
-                { key: "trade_date", label: "Date" },
+                { key: "pricePerUnit", label: "Price per Unit" },
+                { key: "tradeDate", label: "Date" },
               ].map(({ key, label }) => (
                 <TableCell key={key}>
                   <TableSortLabel
@@ -96,13 +102,13 @@ const filteredTrades = sortedTrades.filter((trade) => {
             {filteredTrades.map((trade) => (
               <TableRow key={trade.id}>
                 <TableCell>{trade.id}</TableCell>
-                <TableCell>{trade.trade_type}</TableCell>
+                <TableCell>{trade.tradeType}</TableCell>
                 <TableCell>{trade.source}</TableCell>
-                <TableCell>{trade.transaction_type}</TableCell>
+                <TableCell>{trade.transactionType}</TableCell>
                 <TableCell>{trade.ticker}</TableCell>
                 <TableCell>{trade.quantity}</TableCell>
-                <TableCell>{trade.price_per_unit}</TableCell>
-                <TableCell>{new Date(trade.trade_date).toLocaleDateString()}</TableCell>
+                <TableCell>{trade.pricePerUnit}</TableCell>
+                <TableCell>{new Date(trade.tradeDate).toLocaleDateString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>
