@@ -313,7 +313,7 @@
   {
     "ticker": "PLTR",
     "created_at": "03/05/2025",
-    "type": "Private",
+    "type": "Personal",
     "source": "One Zero",
     "transaction_type": "Buy",
     "quantity": 2.0,
