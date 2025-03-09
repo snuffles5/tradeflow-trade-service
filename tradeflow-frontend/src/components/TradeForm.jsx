@@ -1,4 +1,11 @@
-// src/components/TradeForm.jsx
+/*
+src/components/TradeForm.jsx
+
+This module defines the TradeForm component, which provides a user interface for submitting trade data.
+Users can input details such as type, source, transaction type, ticker, quantity, price per unit, custom date, and stop loss.
+The component manages form state, validation, and submission to the backend API.
+*/
+
 import React, {useState} from "react";
 import {
     Container,
@@ -74,7 +81,7 @@ function TradeForm() {
                 if (data.error) {
                     alert("Error: " + data.error);
                 } else {
-                    alert("Trade created, ID: " + data.trade_id);
+                    alert("Trade created, ID: " + data.tradeId);
                 }
             })
             .catch((err) => {
@@ -91,9 +98,9 @@ function TradeForm() {
                         {/* Type Select */}
                         <Grid item xs={12}>
                             <FormControl fullWidth required>
-                                <InputLabel id="type-label">Type</InputLabel>
+                                <InputLabel id="typeLabel">Type</InputLabel>
                                 <Select
-                                    labelId="type-label"
+                                    labelId="typeLabel"
                                     id="type"
                                     name="type"
                                     value={formData.type}
@@ -109,9 +116,9 @@ function TradeForm() {
                         {/* Source Select */}
                         <Grid item xs={12}>
                             <FormControl fullWidth required>
-                                <InputLabel id="source-label">Source</InputLabel>
+                                <InputLabel id="sourceLabel">Source</InputLabel>
                                 <Select
-                                    labelId="source-label"
+                                    labelId="sourceLabel"
                                     id="source"
                                     name="source"
                                     value={formData.source}
@@ -128,9 +135,9 @@ function TradeForm() {
                         {/* Transaction Type Select */}
                         <Grid item xs={12}>
                             <FormControl fullWidth required>
-                                <InputLabel id="transactionType-label">Transaction Type</InputLabel>
+                                <InputLabel id="transactionTypeLabel">Transaction Type</InputLabel>
                                 <Select
-                                    labelId="transactionType-label"
+                                    labelId="transactionTypeLabel"
                                     id="transactionType"
                                     name="transactionType"
                                     value={formData.transactionType}
