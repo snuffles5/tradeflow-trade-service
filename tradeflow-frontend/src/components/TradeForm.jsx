@@ -16,7 +16,7 @@ import {
 
 function TradeForm() {
     const [formData, setFormData] = useState({
-        type: "Private",
+        type: "Personal",
         source: "Interactive IL",
         transactionType: "Buy",
         ticker: "",
@@ -100,7 +100,7 @@ function TradeForm() {
                                     label="Type"
                                     onChange={handleChange}
                                 >
-                                    <MenuItem value="Private">Private</MenuItem>
+                                    <MenuItem value="Personal">Personal</MenuItem>
                                     <MenuItem value="Joint">Joint</MenuItem>
                                 </Select>
                             </FormControl>

@@ -39,7 +39,7 @@ const filteredTrades = sortedTrades.filter((trade) => {
   return searchTerms.every(term =>
     trade.ticker.toLowerCase().includes(term) ||
     trade.source.toLowerCase().includes(term) ||
-    trade.type.toLowerCase().includes(term)
+    trade.trade_type.toLowerCase().includes(term)
   );
 });
 
@@ -72,14 +72,13 @@ const filteredTrades = sortedTrades.filter((trade) => {
             <TableRow>
               {[
                 { key: "id", label: "ID" },
-                { key: "type", label: "Type" },
+                { key: "trade_type", label: "Type" },
                 { key: "source", label: "Source" },
                 { key: "transaction_type", label: "Transaction Type" },
                 { key: "ticker", label: "Ticker" },
                 { key: "quantity", label: "Quantity" },
                 { key: "price_per_unit", label: "Price per Unit" },
-                { key: "stop_loss", label: "Stop Loss" },
-                { key: "created_at", label: "Created At" },
+                { key: "trade_date", label: "Date" },
               ].map(({ key, label }) => (
                 <TableCell key={key}>
                   <TableSortLabel
@@ -97,14 +96,13 @@ const filteredTrades = sortedTrades.filter((trade) => {
             {filteredTrades.map((trade) => (
               <TableRow key={trade.id}>
                 <TableCell>{trade.id}</TableCell>
-                <TableCell>{trade.type}</TableCell>
+                <TableCell>{trade.trade_type}</TableCell>
                 <TableCell>{trade.source}</TableCell>
                 <TableCell>{trade.transaction_type}</TableCell>
                 <TableCell>{trade.ticker}</TableCell>
                 <TableCell>{trade.quantity}</TableCell>
                 <TableCell>{trade.price_per_unit}</TableCell>
-                <TableCell>{trade.stop_loss}</TableCell>
-                <TableCell>{new Date(trade.created_at).toLocaleDateString()}</TableCell>
+                <TableCell>{new Date(trade.trade_date).toLocaleDateString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>
