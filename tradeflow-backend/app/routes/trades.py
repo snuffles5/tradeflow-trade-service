@@ -6,9 +6,10 @@ from flask import Blueprint, request, jsonify, current_app
 from services.providers.factory import ProviderFactory
 from services.trade_summary import merge_trades
 from utils.consts import DATA_FOLDER_PATH
-from ..database import db
+from app.database import db
 from app.models import Trade
 from app.schemas import TradeSchema
+from utils.text_utils import dict_keys_to_camel
 
 trades_bp = Blueprint("trades_bp", __name__)
 
@@ -80,7 +81,7 @@ def create_trade():
     save_to_file(new_trade)
 
     current_app.logger.info(f"Trade created with ID: {new_trade.id}")
-    return jsonify({"message": "Trade created", "trade_id": new_trade.id}), 201
+    return jsonify(dict_keys_to_camel({"message": "trade created", "trade_id": new_trade.id})), 201
 
 
 @trades_bp.route("/trades", methods=["GET"])
@@ -91,19 +92,19 @@ def list_trades():
         for t in trades:
             results.append({
                 "id": t.id,
-                "tradeType": t.trade_type,
+                "trade_type": t.trade_type,
                 "source": t.source,
-                "transactionType": t.transaction_type,
+                "transaction_type": t.transaction_type,
                 "ticker": t.ticker,
                 "quantity": t.quantity,
-                "pricePerUnit": t.price_per_unit,
-                "tradeDate": t.trade_date.isoformat(),
-                "createdAt": t.created_at.isoformat(),
-                "updatedAt": t.updated_at.isoformat(),
-                "holdingId": t.holding_id,
+                "price_per_unit": t.price_per_unit,
+                "trade_date": t.trade_date.isoformat(),
+                "created_at": t.created_at.isoformat(),
+                "updated_at": t.updated_at.isoformat(),
+                "holding_id": t.holding_id,
             })
         current_app.logger.info("Fetched all trades")
-        return jsonify(results), 200
+        return jsonify(dict_keys_to_camel(results)), 200
 
 
 @trades_bp.route("/aggregated-trades", methods=["GET"])
@@ -119,53 +120,51 @@ def aggregated_trades():
             trade_dict = {
                 "ticker": trade.ticker,
                 "source": trade.source,
-                "tradeType": trade.trade_type,
+                "trade_type": trade.trade_type,
                 "quantity": trade.quantity,
-                "pricePerUnit": trade.price_per_unit,
-                "tradeDate": trade_date_str,
-                "transactionType": trade.transaction_type,
+                "price_per_unit": trade.price_per_unit,
+                "trade_date": trade_date_str,
+                "transaction_type": trade.transaction_type,
             }
             # Fetch the current price for the ticker (cached)
-            # trade_dict["currentPrice"] = 0 # Placeholder for the current price
+            # trade_dict["current_price"] = 0  # Placeholder for the current price
             trades_list.append(trade_dict)
 
-        # Merge similar trades (grouping by ticker, source, and type)
-        summary_data = merge_trades(trades_list, merge_keys=['ticker', 'source', 'type'])
-        return jsonify(summary_data), 200
+        # Merge similar trades (grouping by ticker, source, and trade_type)
+        summary_data = merge_trades(trades_list, merge_keys=['ticker', 'source', 'trade_type'])
+        return jsonify(dict_keys_to_camel(summary_data)), 200
 
 
 def calculate_closed_position(group):
     """
-    For closed positions (totalQuantity == 0), return:
+    For closed positions (total_quantity == 0), return:
       - net_cash: displayed cost basis (flipped sign)
       - profit: realized profit (positive for gain, negative for loss)
       - profit_percentage: profit relative to the total buy amount
     """
-    net_cash = group.get("totalCost", 0)
+    net_cash = group.get("total_cost", 0)
     profit = group.get("profit", 0) if group.get("profit") is not None else 0
-    # profitPercentage is computed in merge_trades; return it as is.
-    profit_percentage = group.get("profitPercentage", 0)
+    profit_percentage = group.get("profit_percentage", 0)
     return net_cash, profit, profit_percentage
 
 
 def calculate_open_position(group):
     """
-    For open positions (totalQuantity != 0), use the latest available price:
-      - current_price: from the first trade's 'currentPrice' if available, else fallback to lastPrice.
-      - market_value: current_price * totalQuantity.
-      - profit: market_value - cost_basis (where cost_basis is totalCost).
-      - profit_percentage: computed as ((current_price/avgCost)-1)*100; here we return it as computed in merge_trades.
+    For open positions (total_quantity != 0), use the latest available price:
+      - current_price: from the first trade's 'current_price' if available, else fallback to last_price.
+      - market_value: current_price * total_quantity.
+      - profit: market_value - cost_basis (where cost_basis is total_cost).
+      - profit_percentage: computed as ((current_price/avg_cost)-1)*100; here we return it as computed in merge_trades.
     """
     trades_in_group = group.get("trades", [])
-    if trades_in_group and trades_in_group[0].get("currentPrice") is not None:
-        current_price = trades_in_group[0]["currentPrice"]
+    if trades_in_group and trades_in_group[0].get("current_price") is not None:
+        current_price = trades_in_group[0]["current_price"]
     else:
-        current_price = group.get("lastPrice", 0)
-    quantity = group.get("totalQuantity", 0)
-    cost_basis = group.get("totalCost", 0)
+        current_price = group.get("last_price", 0)
+    quantity = group.get("total_quantity", 0)
+    cost_basis = group.get("total_cost", 0)
     market_value = current_price * quantity
     profit = market_value - cost_basis
-    # Let profit_percentage be computed as in merge_trades
     if quantity > 0 and cost_basis != 0:
         profit_percentage = ((current_price / (cost_basis / quantity)) - 1) * 100
     elif quantity < 0 and current_price != 0:
@@ -181,16 +180,16 @@ def aggregate_overall_metrics(merged_data):
     overall_buy_amount = 0
 
     for group in merged_data:
-        quantity = group.get("totalQuantity", 0)
+        quantity = group.get("total_quantity", 0)
         if quantity == 0:
             net_cash, profit, _ = calculate_closed_position(group)
         else:
             _, profit, _ = calculate_open_position(group)
-            net_cash = group.get("currentPrice", group.get("lastPrice", 0)) * quantity
+            current_price = group.get("current_price") or group.get("last_price") or 0
+            net_cash = current_price * quantity
         overall_net_cash += net_cash
         overall_profit += profit
 
-        # Recompute group buy amount from trades (only summing for buy trades)
         group_buy_amount = sum(
             t['quantity'] * t['price_per_unit']
             for t in group.get('trades', [])
@@ -213,13 +212,13 @@ def trade_summary():
             trade_dict = {
                 "ticker": trade.ticker,
                 "source": trade.source,
-                "tradeType": trade.trade_type,  # updated field name
+                "trade_type": trade.trade_type,
                 "quantity": trade.quantity,
-                "pricePerUnit": trade.price_per_unit,
-                "tradeDate": trade_date_str,
-                "transactionType": trade.transaction_type,
-                "holdingId": trade.holding_id,
-                "currentPrice": provider_factory.get_price(trade.ticker) if trade.quantity != 0 else None
+                "price_per_unit": trade.price_per_unit,
+                "trade_date": trade_date_str,
+                "transaction_type": trade.transaction_type,
+                "holding_id": trade.holding_id,
+                "current_price": provider_factory.get_price(trade.ticker) if trade.quantity != 0 else None
             }
             trades_list.append(trade_dict)
 
@@ -233,12 +232,13 @@ def trade_summary():
         by_source = {}
         by_type = {}
         for group in merged_data:
-            quantity = group.get("totalQuantity", 0)
+            quantity = group.get("total_quantity", 0)
             if quantity == 0:
                 net_cash, profit, _ = calculate_closed_position(group)
             else:
                 _, profit, _ = calculate_open_position(group)
-                net_cash = group.get("currentPrice", group.get("lastPrice", 0)) * quantity
+                current_price = group.get("current_price") or group.get("last_price") or 0
+                net_cash = current_price * quantity
 
             # Recompute group buy amount from trades
             group_buy_amount = sum(
@@ -249,37 +249,35 @@ def trade_summary():
 
             src = group.get("source", "Unknown")
             if src not in by_source:
-                by_source[src] = {"totalNetCash": 0, "totalProfit": 0, "buyAmount": 0, "count": 0}
-            by_source[src]["totalNetCash"] += net_cash
-            by_source[src]["totalProfit"] += profit
-            by_source[src]["buyAmount"] += group_buy_amount
+                by_source[src] = {"total_net_cash": 0, "total_profit": 0, "buy_amount": 0, "count": 0}
+            by_source[src]["total_net_cash"] += net_cash
+            by_source[src]["total_profit"] += profit
+            by_source[src]["buy_amount"] += group_buy_amount
             by_source[src]["count"] += 1
 
             typ = group.get("trade_type", "Unknown")
             if typ not in by_type:
-                by_type[typ] = {"totalNetCash": 0, "totalProfit": 0, "buyAmount": 0, "count": 0}
-            by_type[typ]["totalNetCash"] += net_cash
-            by_type[typ]["totalProfit"] += profit
-            by_type[typ]["buyAmount"] += group_buy_amount
+                by_type[typ] = {"total_net_cash": 0, "total_profit": 0, "buy_amount": 0, "count": 0}
+            by_type[typ]["total_net_cash"] += net_cash
+            by_type[typ]["total_profit"] += profit
+            by_type[typ]["buy_amount"] += group_buy_amount
             by_type[typ]["count"] += 1
 
         # Calculate profit percentage for each source/type
         for src, data in by_source.items():
-            data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data[
-                "buyAmount"] else None
+            data["profit_percentage"] = round((data["total_profit"] / data["buy_amount"]) * 100, 2) if data["buy_amount"] else None
         for typ, data in by_type.items():
-            data["profitPercentage"] = round((data["totalProfit"] / data["buyAmount"]) * 100, 2) if data[
-                "buyAmount"] else None
+            data["profit_percentage"] = round((data["total_profit"] / data["buy_amount"]) * 100, 2) if data["buy_amount"] else None
 
         result = {
             "overall": {
-                "totalNetCash": overall_net_cash,
-                "totalProfitPercentage": overall_profit_percentage,
+                "total_net_cash": overall_net_cash,
+                "total_profit_percentage": overall_profit_percentage,
             },
-            "bySource": by_source,
-            "byType": by_type,
+            "by_source": by_source,
+            "by_type": by_type,
         }
-        return jsonify(result), 200
+        return jsonify(dict_keys_to_camel(result)), 200
 
 
 @trades_bp.route("/stock-info/<ticker>", methods=["GET"])
@@ -288,12 +286,13 @@ def get_stock_info(ticker):
     New endpoint to fetch the latest market price for a given ticker.
     """
     try:
-        # Use the existing price provider (with caching) to get the latest price.
         stock = provider_factory.get_stock(ticker)
-        return jsonify({"ticker": ticker, "lastPrice": stock.price,
-                        "changeToday": stock.change_today,
-                        "changeTodayPercentage": stock.change_today_percentage,
-                        }), 200
+        return jsonify(dict_keys_to_camel({
+            "ticker": ticker,
+            "last_price": stock.price,
+            "change_today": stock.change_today,
+            "change_today_percentage": stock.change_today_percentage,
+        })), 200
     except Exception as e:
         current_app.logger.error(f"Error fetching last price for {ticker}: {str(e)}")
-        return jsonify({"error": "Failed to get last price"}), 500
+        return jsonify({"error": "failed to get last price"}), 500

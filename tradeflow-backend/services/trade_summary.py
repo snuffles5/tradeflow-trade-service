@@ -83,7 +83,7 @@ def merge_trades(trades, merge_keys=None):
                 'source': trade.get('source'),
                 'trade_type': trade.get('trade_type'),
                 'total_quantity': 0,
-                'netCost': 0,
+                'net_cost': 0,
                 'last_price': None,
                 'current_price': None,  # will be updated from the trade's field if available
                 'trade_count': 0,
@@ -119,7 +119,7 @@ def merge_trades(trades, merge_keys=None):
         data['holding_period'] = calculate_holding_period(data['trades'])
         if data['total_quantity'] == 0:
             # Closed position: realized profit = -netCost, profit percentage = profit / buyAmount * 100
-            data['profit'] = round(-data['netCost'], 2)
+            data['profit'] = round(-data['net_cost'], 2)
             if data['buy_amount'] != 0:
                 data['profit_percentage'] = round((data['profit'] / data['buy_amount']) * 100, 2)
             data['total_cost'] = round(-data['net_cost'], 2)
@@ -131,15 +131,15 @@ def merge_trades(trades, merge_keys=None):
             if data.get('current_price') is not None:
                 avg_cost = data['total_cost'] / data['total_quantity']
                 if data['total_quantity'] > 0:
-                    profit = (data['current_price'] - avgCost) * data['total_quantity']
-                    profit_percentage = ((data['current_price'] / avgCost) - 1) * 100
+                    profit = (data['current_price'] - avg_cost) * data['total_quantity']
+                    profit_percentage = ((data['current_price'] / avg_cost) - 1) * 100
                 elif data['total_quantity'] < 0:
-                    profit = (avgCost - data['current_price']) * abs(data['total_quantity'])
-                    profit_percentage = ((avgCost / data['currentPrice']) - 1) * 100
+                    profit = (avg_cost - data['current_price']) * abs(data['total_quantity'])
+                    profit_percentage = ((avg_cost / data['currentPrice']) - 1) * 100
                 data['profit'] = round(profit, 2)
                 data['profit_percentage'] = round(profit_percentage, 2)
                 log.trace("Open position key %s: current_price=%s, avg_cost=%s, profit=%s, profit_percentage=%s",
-                          key, data['current_price'], avgCost, data['profit'], data['profit_percentage'])
+                          key, data['current_price'], avg_cost, data['profit'], data['profit_percentage'])
             else:
                 data['profit'] = None
                 data['profit_percentage'] = None
