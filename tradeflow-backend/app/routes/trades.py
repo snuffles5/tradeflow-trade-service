@@ -5,19 +5,16 @@ from flask import Blueprint, request, jsonify, current_app
 
 from services.providers.factory import ProviderFactory
 from services.trade_summary import merge_trades
-from utils.consts import DATA_FOLDER_PATH
 from app.database import db
 from app.models import Trade
 from app.schemas import TradeSchema
+from utils.consts import TRADES_JSON_FILE_PATH
 from utils.text_utils import dict_keys_to_camel
 
 trades_bp = Blueprint("trades_bp", __name__)
 
 # Instantiate the price provider (with 5 minutes caching)
 provider_factory = ProviderFactory(cache_duration=300)
-
-TRADES_JSON_FILE = DATA_FOLDER_PATH / "trades.json"
-
 
 def save_to_file(new_trade):
     # File path for storing trades
@@ -36,8 +33,8 @@ def save_to_file(new_trade):
     }
 
     # Load existing data if the file exists
-    if os.path.exists(TRADES_JSON_FILE):
-        with open(TRADES_JSON_FILE, "r") as file:
+    if os.path.exists(TRADES_JSON_FILE_PATH):
+        with open(TRADES_JSON_FILE_PATH, "r") as file:
             try:
                 trades_list = json.load(file)
             except json.JSONDecodeError:
@@ -48,7 +45,7 @@ def save_to_file(new_trade):
     # Append the new record and save
     trades_list.append(trade_record)
     try:
-        with open(TRADES_JSON_FILE, "w") as file:
+        with open(TRADES_JSON_FILE_PATH, "w") as file:
             json.dump(trades_list, file, indent=2)
     except Exception as e:
         current_app.logger.error(f"Error saving trade to file: {str(e)}")
