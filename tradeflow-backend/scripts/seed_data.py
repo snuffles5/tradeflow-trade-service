@@ -25,9 +25,6 @@ def load_data(file_path):
             if 'updated_at' in item and item['updated_at']:
                 item['updated_at'] = datetime.strptime(item['updated_at'], "%m/%d/%Y")
 
-            if 'stop_loss' not in item:
-                item['stop_loss'] = 0.0
-
             trade = Trade(**item)
             session.add(trade)
 
