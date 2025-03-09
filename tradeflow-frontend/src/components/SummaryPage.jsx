@@ -28,8 +28,8 @@ import {
 } from "@mui/material";
 
 // Helper function to format numbers with commas and fixed decimals
-const formatNumber = (num, decimals = 2) => {
-    return Number(num).toLocaleString("en-US", {
+const formatNumber = (num, decimals = 2, locale = "en-US") => {
+    return Number(num).toLocaleString(locale, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
     });
