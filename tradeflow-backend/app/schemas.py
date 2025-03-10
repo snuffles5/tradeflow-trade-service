@@ -43,10 +43,14 @@ class UnrealizedHoldingSchema(Schema):
     ticker = fields.Str(required=True)
     source = fields.Str(required=True)
     trade_type = fields.Str(required=True)
-    total_holding = fields.Float(required=True)
+    net_quantity = fields.Float(required=True)
     average_cost = fields.Float(required=True)
+    net_cost = fields.Float(required=True)
+    latest_trade_price = fields.Float(required=True)
+    open_date = fields.DateTime(allow_none=False)
+    close_date = fields.DateTime(allow_none=True)
     stop_loss = fields.Float(allow_none=True)
-    entry_date = fields.DateTime(required=True)
+    updated_at = fields.DateTime(dump_only=True)
 
     @post_load
     def make_unrealized_holding(self, data, **kwargs):
