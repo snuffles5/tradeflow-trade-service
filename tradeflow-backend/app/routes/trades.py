@@ -4,7 +4,13 @@ import os
 from flask import Blueprint, request, jsonify, current_app
 
 from services.providers.factory import ProviderFactory
-from services.trade_summary import merge_trades
+from services.trade_holdings import (
+    merge_trades,
+    process_new_trade,
+    calculate_closed_position,
+    calculate_open_position,
+    aggregate_overall_metrics,
+)
 from app.database import db
 from app.models import Trade
 from app.schemas import TradeSchema
@@ -15,6 +21,7 @@ trades_bp = Blueprint("trades_bp", __name__)
 
 # Instantiate the price provider (with 5 minutes caching)
 provider_factory = ProviderFactory(cache_duration=300)
+
 
 def save_to_file(new_trade):
     # File path for storing trades
@@ -30,6 +37,7 @@ def save_to_file(new_trade):
         "quantity": new_trade.quantity,
         "price_per_unit": f"{new_trade.price_per_unit:.2f}",
         "trade_date": new_trade.trade_date.strftime("%m/%d/%Y"),
+        "holding_id": new_trade.holding_id,  # new field added
     }
 
     # Load existing data if the file exists
@@ -55,12 +63,12 @@ def save_to_file(new_trade):
 def create_trade():
     trade_schema = TradeSchema()
     try:
-        data = trade_schema.load(request.json)  # validation now expects 'trade_type' and optional 'holding_id'
+        data = trade_schema.load(request.json)
     except Exception as e:
         current_app.logger.error(f"Validation error: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
-    # Construct and save the Trade object using the updated field names.
+    # Construct and save the Trade object using updated field names.
     new_trade = Trade(
         trade_type=data["trade_type"],
         source=data["source"],
@@ -73,9 +81,15 @@ def create_trade():
     )
 
     db.session.add(new_trade)
-    db.session.commit()
+    db.session.flush()  # flush so that new_trade is attached and gets an ID
+
+    # Process the trade to update/create the corresponding holding and update new_trade.holding_id.
+    process_new_trade(new_trade)
 
     save_to_file(new_trade)
+
+    # Commit all changes at once.
+    db.session.commit()
 
     current_app.logger.info(f"Trade created with ID: {new_trade.id}")
     return jsonify(dict_keys_to_camel({"message": "trade created", "trade_id": new_trade.id})), 201
@@ -106,7 +120,7 @@ def list_trades():
 
 @trades_bp.route("/aggregated-trades", methods=["GET"])
 def aggregated_trades():
-    # Query all trades from the database
+    # Query all trades from the database.
     with current_app.app_context():
         trades = Trade.query.all()
         trades_list = []
@@ -123,8 +137,6 @@ def aggregated_trades():
                 "trade_date": trade_date_str,
                 "transaction_type": trade.transaction_type,
             }
-            # Fetch the current price for the ticker (cached)
-            # trade_dict["current_price"] = 0  # Placeholder for the current price
             trades_list.append(trade_dict)
 
         # Merge similar trades (grouping by ticker, source, and trade_type)
@@ -132,75 +144,9 @@ def aggregated_trades():
         return jsonify(dict_keys_to_camel(summary_data)), 200
 
 
-def calculate_closed_position(group):
-    """
-    For closed positions (total_quantity == 0), return:
-      - net_cash: displayed cost basis (flipped sign)
-      - profit: realized profit (positive for gain, negative for loss)
-      - profit_percentage: profit relative to the total buy amount
-    """
-    net_cash = group.get("total_cost", 0)
-    profit = group.get("profit", 0) if group.get("profit") is not None else 0
-    profit_percentage = group.get("profit_percentage", 0)
-    return net_cash, profit, profit_percentage
-
-
-def calculate_open_position(group):
-    """
-    For open positions (total_quantity != 0), use the latest available price:
-      - current_price: from the first trade's 'current_price' if available, else fallback to last_price.
-      - market_value: current_price * total_quantity.
-      - profit: market_value - cost_basis (where cost_basis is total_cost).
-      - profit_percentage: computed as ((current_price/avg_cost)-1)*100; here we return it as computed in merge_trades.
-    """
-    trades_in_group = group.get("trades", [])
-    if trades_in_group and trades_in_group[0].get("current_price") is not None:
-        current_price = trades_in_group[0]["current_price"]
-    else:
-        current_price = group.get("last_price", 0)
-    quantity = group.get("total_quantity", 0)
-    cost_basis = group.get("total_cost", 0)
-    market_value = current_price * quantity
-    profit = market_value - cost_basis
-    if quantity > 0 and cost_basis != 0:
-        profit_percentage = ((current_price / (cost_basis / quantity)) - 1) * 100
-    elif quantity < 0 and current_price != 0:
-        profit_percentage = ((cost_basis / quantity / current_price) - 1) * 100
-    else:
-        profit_percentage = 0
-    return market_value, profit, profit_percentage
-
-
-def aggregate_overall_metrics(merged_data):
-    overall_net_cash = 0
-    overall_profit = 0
-    overall_buy_amount = 0
-
-    for group in merged_data:
-        quantity = group.get("total_quantity", 0)
-        if quantity == 0:
-            net_cash, profit, _ = calculate_closed_position(group)
-        else:
-            _, profit, _ = calculate_open_position(group)
-            current_price = group.get("current_price") or group.get("last_price") or 0
-            net_cash = current_price * quantity
-        overall_net_cash += net_cash
-        overall_profit += profit
-
-        group_buy_amount = sum(
-            t['quantity'] * t['price_per_unit']
-            for t in group.get('trades', [])
-            if t.get('transaction_type', '').lower() == 'buy'
-        )
-        overall_buy_amount += group_buy_amount
-
-    overall_profit_percentage = round((overall_profit / overall_buy_amount) * 100, 2) if overall_buy_amount else None
-    return overall_net_cash, overall_profit, overall_profit_percentage
-
-
 @trades_bp.route("/trade-summary", methods=["GET"])
 def trade_summary():
-    # Query all trades from the database (assumes you have a Trade model)
+    # Query all trades from the database.
     with current_app.app_context():
         trades = Trade.query.all()
         trades_list = []
@@ -219,13 +165,13 @@ def trade_summary():
             }
             trades_list.append(trade_dict)
 
-        # Merge trades by ticker, source, and trade_type
+        # Merge trades by ticker, source, and trade_type.
         merged_data = merge_trades(trades_list, merge_keys=['ticker', 'source', 'trade_type'])
 
-        # Aggregate overall metrics using our helper
+        # Aggregate overall metrics using the imported helper.
         overall_net_cash, overall_profit, overall_profit_percentage = aggregate_overall_metrics(merged_data)
 
-        # Optionally, you can add per-source and per-type aggregations as before.
+        # Compute per-source and per-type aggregations.
         by_source = {}
         by_type = {}
         for group in merged_data:
@@ -237,7 +183,6 @@ def trade_summary():
                 current_price = group.get("current_price") or group.get("last_price") or 0
                 net_cash = current_price * quantity
 
-            # Recompute group buy amount from trades
             group_buy_amount = sum(
                 t['quantity'] * t['price_per_unit']
                 for t in group.get('trades', [])
@@ -260,7 +205,6 @@ def trade_summary():
             by_type[typ]["buy_amount"] += group_buy_amount
             by_type[typ]["count"] += 1
 
-        # Calculate profit percentage for each source/type
         for src, data in by_source.items():
             data["profit_percentage"] = round((data["total_profit"] / data["buy_amount"]) * 100, 2) if data["buy_amount"] else None
         for typ, data in by_type.items():
