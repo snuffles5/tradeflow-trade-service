@@ -55,7 +55,8 @@ function SummaryPage() {
         profitPercentage: true,
         changeToday: true,
         changeTodayPercentage: true,
-        // tradeCount can be omitted if not stored in holdings
+        holdingPeriod: true,
+        tradeCount: true,
     });
     const [includeClosed, setIncludeClosed] = useState(false);
     // Extra settings options
@@ -63,24 +64,8 @@ function SummaryPage() {
     const [darkMode, setDarkMode] = useState(false);
     const [highlightSignificant, setHighlightSignificant] = useState(true);
 
+    // Fetch holdings data on mount
     useEffect(() => {
-        if (autoRefresh) {
-            const interval = setInterval(() => {
-                fetch(`${process.env.REACT_APP_API_URL}/holdings`)
-                    .then((res) => res.json())
-                    .then((data) => {
-                        setHoldingsData(data);
-                    })
-                    .catch((err) => {
-                        console.error("Error fetching holdings:", err);
-                    });
-            }, 60000); // Refresh every 60 seconds
-            return () => clearInterval(interval);
-        }
-    }, [autoRefresh]);
-
-    useEffect(() => {
-        // Fetch holdings detailed data
         fetch(`${process.env.REACT_APP_API_URL}/holdings`)
             .then((res) => res.json())
             .then((data) => {
@@ -92,7 +77,7 @@ function SummaryPage() {
                 setLoading(false);
             });
 
-        // Fetch aggregated metrics
+        // Fetch aggregated metrics from holdings-summary
         fetch(`${process.env.REACT_APP_API_URL}/holdings-summary`)
             .then((res) => res.json())
             .then((data) => {
@@ -105,24 +90,43 @@ function SummaryPage() {
             });
     }, []);
 
+    // Auto-refresh holdings data if enabled
+    useEffect(() => {
+        if (autoRefresh) {
+            const interval = setInterval(() => {
+                fetch(`${process.env.REACT_APP_API_URL}/holdings`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        setHoldingsData(data);
+                    })
+                    .catch((err) => {
+                        console.error("Error fetching holdings:", err);
+                    });
+            }, 60000);
+            return () => clearInterval(interval);
+        }
+    }, [autoRefresh]);
+
+    // For each open holding, update current price via stock-info endpoint
     useEffect(() => {
         if (!loading && holdingsData.length > 0 && !priceUpdatesLaunched) {
             setPriceUpdatesLaunched(true);
-
-            // For each open holding, update current price via the stock-info endpoint.
             holdingsData.forEach((holding, index) => {
+                // Only update for open positions
                 if (holding.netQuantity !== 0) {
                     setHoldingsData((prev) => {
                         const newData = [...prev];
                         newData[index] = {...newData[index], updating: true};
                         return newData;
                     });
-
                     fetch(`${process.env.REACT_APP_API_URL}/stock-info/${holding.ticker}`)
                         .then((res) => res.json())
                         .then((data) => {
+                            // Assuming the API returns lastPrice, changeToday, changeTodayPercentage
+                            const currentPrice = data.lastPrice;
                             const changeToday = data.changeToday;
                             const changeTodayPercentage = data.changeTodayPercentage;
+                            const avgCost = holding.averageCost; // from holding record
                             let updatedProfit, updatedProfitPercentage;
                             if (holding.netQuantity > 0) {
                                 updatedProfit = (currentPrice - avgCost) * holding.netQuantity;
@@ -138,6 +142,8 @@ function SummaryPage() {
                                     currentPrice,
                                     profit: updatedProfit,
                                     profitPercentage: updatedProfitPercentage,
+                                    changeToday,
+                                    changeTodayPercentage,
                                     updating: false,
                                 };
                                 return newData;
@@ -156,6 +162,7 @@ function SummaryPage() {
         }
     }, [loading, holdingsData, priceUpdatesLaunched]);
 
+    // Sort holdings data based on sortConfig
     const sortedData = [...holdingsData].sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
@@ -169,18 +176,20 @@ function SummaryPage() {
             : bStr.localeCompare(aStr);
     });
 
+    // Filter holdings based on search terms
     const filteredData = sortedData.filter((holding) => {
         const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
         const matchesSearch = searchTerms.every(
             (term) =>
                 holding.ticker.toLowerCase().includes(term) ||
                 holding.source.toLowerCase().includes(term) ||
-                holding.tradeType.toLowerCase().includes(term)
+                (holding.tradeType && holding.tradeType.toLowerCase().includes(term))
         );
         const includeHolding = includeClosed ? true : holding.netQuantity !== 0;
         return matchesSearch && includeHolding;
     });
 
+    // Calculate totals from filtered data
     const totals = filteredData.reduce(
         (acc, holding) => {
             acc.netQuantity += Number(holding.netQuantity) || 0;
@@ -214,6 +223,7 @@ function SummaryPage() {
         });
     };
 
+    // Define columns for the table and filter dropdown.
     const columns = [
         {key: "ticker", label: "Ticker"},
         {key: "source", label: "Source"},
@@ -224,6 +234,8 @@ function SummaryPage() {
         {key: "currentPrice", label: "Current Price"},
         {key: "profit", label: "Profit"},
         {key: "profitPercentage", label: "Profit (%)"},
+        {key: "changeToday", label: "Change Today"},
+        {key: "changeTodayPercentage", label: "Change Today (%)"},
         {key: "holdingPeriod", label: "Holding Period (days)"},
         {key: "tradeCount", label: "Trade Count"},
     ];
@@ -273,43 +285,18 @@ function SummaryPage() {
                                 ? `${formatNumber(aggregateData.overall.totalProfitPercentage)}%`
                                 : "N/A"}
                         </Typography>
-                        <Box sx={{mt: 2}}>
-                            <Grid container spacing={2}>
-                                {/* Breakdown by Source */}
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle1">By Source</Typography>
-                                    {Object.entries(aggregateData.bySource || {}).map(([source, data]) => (
-                                        <Box key={source} sx={{mb: 1}}>
-                                            <Typography variant="body2">
-                                                <strong>{source}:</strong> Net Cash: $
-                                                {formatNumber(data.totalNetCost || 0)} | Profit %:{" "}
-                                                {data.profitPercentage !== null && data.profitPercentage !== undefined
-                                                    ? `${formatNumber(data.profitPercentage)}%`
-                                                    : "N/A"}
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Grid>
-                                {/* Breakdown by Type */}
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle1">By Type</Typography>
-                                    {Object.entries(aggregateData.byType || {}).map(([tradeType, data]) => (
-                                        <Box key={tradeType} sx={{mb: 1}}>
-                                            <Typography variant="body2">
-                                                <strong>{tradeType}:</strong> Net Cash: $
-                                                {formatNumber(data.totalNetCost || 0)} | Profit %:{" "}
-                                                {data.profitPercentage !== null && data.profitPercentage !== undefined
-                                                    ? `${formatNumber(data.profitPercentage)}%`
-                                                    : "N/A"}
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Grid>
-                            </Grid>
-                        </Box>
+                        <Typography variant="body1">
+                            Change Today: ${formatNumber(aggregateData.overall?.changeToday || 0)}
+                        </Typography>
+                        <Typography variant="body1">
+                            Change Today Percentage:{" "}
+                            {aggregateData.overall?.changeTodayPercentage !== null &&
+                            aggregateData.overall?.changeTodayPercentage !== undefined
+                                ? `${formatNumber(aggregateData.overall.changeTodayPercentage)}%`
+                                : "N/A"}
+                        </Typography>
                     </Paper>
                 ) : null}
-
 
                 {/* Settings Bar */}
                 <Box
@@ -322,10 +309,7 @@ function SummaryPage() {
                     }}
                 >
                     <FormControl sx={{minWidth: 200, mr: 2}}>
-                        <InputLabel
-                            id="columns-select-label"
-                            sx={{color: darkMode ? "white" : "inherit"}}
-                        >
+                        <InputLabel id="columns-select-label" sx={{color: darkMode ? "white" : "inherit"}}>
                             Columns
                         </InputLabel>
                         <Select
@@ -355,19 +339,14 @@ function SummaryPage() {
                             }}
                             renderValue={(selected) =>
                                 selected.length > 3
-                                    ? `${selected
-                                        .slice(0, 3)
-                                        .map((key) => {
-                                            const col = columns.find((c) => c.key === key);
-                                            return col ? col.label : key;
-                                        })
-                                        .join(", ")}...`
-                                    : selected
-                                        .map((key) => {
-                                            const col = columns.find((c) => c.key === key);
-                                            return col ? col.label : key;
-                                        })
-                                        .join(", ")
+                                    ? `${selected.slice(0, 3).map((key) => {
+                                        const col = columns.find((c) => c.key === key);
+                                        return col ? col.label : key;
+                                    }).join(", ")}...`
+                                    : selected.map((key) => {
+                                        const col = columns.find((c) => c.key === key);
+                                        return col ? col.label : key;
+                                    }).join(", ")
                             }
                         >
                             {columns.map((col) => (
@@ -578,6 +557,28 @@ function SummaryPage() {
                                                 </TableSortLabel>
                                             </TableCell>
                                         )}
+                                        {visibleColumns.changeToday && (
+                                            <TableCell>
+                                                <TableSortLabel
+                                                    active={sortConfig.key === "changeToday"}
+                                                    direction={sortConfig.key === "changeToday" ? sortConfig.direction : "asc"}
+                                                    onClick={() => handleSort("changeToday")}
+                                                >
+                                                    Change Today
+                                                </TableSortLabel>
+                                            </TableCell>
+                                        )}
+                                        {visibleColumns.changeTodayPercentage && (
+                                            <TableCell>
+                                                <TableSortLabel
+                                                    active={sortConfig.key === "changeTodayPercentage"}
+                                                    direction={sortConfig.key === "changeTodayPercentage" ? sortConfig.direction : "asc"}
+                                                    onClick={() => handleSort("changeTodayPercentage")}
+                                                >
+                                                    Change Today (%)
+                                                </TableSortLabel>
+                                            </TableCell>
+                                        )}
                                         {visibleColumns.holdingPeriod && (
                                             <TableCell>
                                                 <TableSortLabel
@@ -605,14 +606,8 @@ function SummaryPage() {
 
                                 <TableBody>
                                     {filteredData.map((holding) => {
-                                        const profit = holding.profit !== null ? Number(holding.profit) : 0;
-                                        const highlight =
-                                            highlightSignificant && (Math.abs(profit) > 1000);
-                                        const highlightStyle = highlight
-                                            ? {backgroundColor: darkMode ? "#ff8c00" : "lightyellow"}
-                                            : {};
                                         return (
-                                            <TableRow key={holding.id} sx={highlightStyle}>
+                                            <TableRow key={holding.id}>
                                                 {visibleColumns.ticker && <TableCell>{holding.ticker}</TableCell>}
                                                 {visibleColumns.source && <TableCell>{holding.source}</TableCell>}
                                                 {visibleColumns.tradeType && <TableCell>{holding.tradeType}</TableCell>}
@@ -679,6 +674,20 @@ function SummaryPage() {
                                                         )}
                                                     </TableCell>
                                                 )}
+                                                {visibleColumns.changeToday && (
+                                                    <TableCell>
+                                                        {holding.changeToday !== undefined
+                                                            ? `$${formatNumber(holding.changeToday)}`
+                                                            : "N/A"}
+                                                    </TableCell>
+                                                )}
+                                                {visibleColumns.changeTodayPercentage && (
+                                                    <TableCell>
+                                                        {holding.changeTodayPercentage !== undefined
+                                                            ? `${formatNumber(holding.changeTodayPercentage)}%`
+                                                            : "N/A"}
+                                                    </TableCell>
+                                                )}
                                                 {visibleColumns.holdingPeriod && (
                                                     <TableCell>
                                                         {holding.holdingPeriod !== null ? holding.holdingPeriod : "N/A"}
@@ -721,6 +730,8 @@ function SummaryPage() {
                                         {visibleColumns.profitPercentage && (
                                             <TableCell sx={{borderRight: "3px solid gray"}}></TableCell>
                                         )}
+                                        {visibleColumns.changeToday && <TableCell/>}
+                                        {visibleColumns.changeTodayPercentage && <TableCell/>}
                                         {visibleColumns.holdingPeriod && <TableCell/>}
                                         {visibleColumns.tradeCount && (
                                             <TableCell>{Number(totals.tradeCount).toLocaleString()}</TableCell>
