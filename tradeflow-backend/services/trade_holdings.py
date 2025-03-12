@@ -106,173 +106,29 @@ def process_new_trade(new_trade):
     return update_unrealized_holding(new_trade)
 
 
-def calculate_holding_period(trades):
+def get_holding_period(holding):
     """
-    Calculates holding period in days for a given list of trades.
-    For closed cycles, returns the duration of the last closed cycle.
-    For open positions, returns the duration from the last time the position was zero until now.
+    Returns the holding period (in days) based on the holding's open_date and close_date.
+    If the holding is still open (close_date is None), returns the period from open_date until now.
     """
-    try:
-        sorted_trades = sorted(trades, key=lambda t: datetime.strptime(t['created_at'], "%m/%d/%Y"))
-    except Exception:
-        return None
-
-    cumulative = 0
-    current_cycle_start = None
-    last_closed_cycle_duration = None
-
-    for trade in sorted_trades:
-        date = datetime.strptime(trade['created_at'], "%m/%d/%Y")
-        if cumulative == 0:
-            current_cycle_start = date
-        cumulative += trade.get('quantity', 0)
-        if cumulative == 0 and current_cycle_start:
-            last_closed_cycle_duration = (date - current_cycle_start).days
-            current_cycle_start = None
-
-    if cumulative != 0 and current_cycle_start:
-        return (datetime.now() - current_cycle_start).days
-    return last_closed_cycle_duration
+    if holding.close_date:
+        return (holding.close_date - holding.open_date).days
+    return (datetime.utcnow() - holding.open_date).days
 
 
-def merge_trades(trades, merge_keys=None):
+def get_profit(holding):
     """
-    Merges trades into summary groups based on merge_keys.
-    Uses the updated field name 'trade_type'.
-
-    Computes group-level metrics including:
-      - total_quantity (net quantity),
-      - net_cost,
-      - last trade price,
-      - holding_period (via calculate_holding_period),
-      and profit metrics.
+    Computes profit as (latest_trade_price - average_cost) * net_quantity.
+    For short positions (net_quantity negative) this calculation should reflect profit/loss appropriately.
     """
-    if merge_keys is None:
-        merge_keys = ['ticker', 'source', 'trade_type']
-
-    for idx, trade in enumerate(trades):
-        if trade.get('transaction_type', '').lower() == 'sell' and trade.get('quantity', 0) > 0:
-            trade['quantity'] = -abs(trade.get('quantity', 0))
-
-    summary = {}
-    for idx, trade in enumerate(trades):
-        created_at_str = trade.get('created_at')
-        try:
-            trade_date = datetime.strptime(created_at_str, "%m/%d/%Y")
-        except Exception:
-            trade_date = None
-
-        key = tuple(trade.get(k) for k in merge_keys)
-        if key not in summary:
-            summary[key] = {
-                'ticker': trade.get('ticker'),
-                'source': trade.get('source'),
-                'trade_type': trade.get('trade_type'),
-                'total_quantity': 0,
-                'net_cost': 0,
-                'last_price': None,
-                'current_price': None,
-                'trade_count': 0,
-                'holding_period': None,
-                'profit': None,
-                'profit_percentage': None,
-                'buy_amount': 0,
-                'trades': []
-            }
-
-        group = summary[key]
-        qty = trade.get('quantity', 0)
-        price = trade.get('price_per_unit', 0)
-        group['net_cost'] += qty * price
-        group['total_quantity'] += qty
-        group['trade_count'] += 1
-        if trade.get('transaction_type', '').lower() == 'buy':
-            group['buy_amount'] += qty * price
-        group['trades'].append(trade)
-        if trade_date:
-            if group.get('earliest_date') is None or trade_date < group.get('earliest_date'):
-                group['earliest_date'] = trade_date
-            if group.get('latest_date') is None or trade_date >= group.get('latest_date'):
-                group['latest_date'] = trade_date
-                group['last_price'] = price
-                group['current_price'] = trade.get('current_price', None)
-
-    for key, data in summary.items():
-        data['holding_period'] = calculate_holding_period(data['trades'])
-        if data['total_quantity'] == 0:
-            data['profit'] = round(-data['net_cost'], 2)
-            if data['buy_amount'] != 0:
-                data['profit_percentage'] = round((data['profit'] / data['buy_amount']) * 100, 2)
-            data['total_cost'] = round(-data['net_cost'], 2)
-        else:
-            data['total_cost'] = data['net_cost']
-            if data.get('current_price') is not None:
-                avg_cost = data['total_cost'] / data['total_quantity']
-                if data['total_quantity'] > 0:
-                    profit = (data['current_price'] - avg_cost) * data['total_quantity']
-                    profit_percentage = ((data['current_price'] / avg_cost) - 1) * 100
-                elif data['total_quantity'] < 0:
-                    profit = (avg_cost - data['current_price']) * abs(data['total_quantity'])
-                    profit_percentage = ((avg_cost / data['current_price']) - 1) * 100
-                data['profit'] = round(profit, 2)
-                data['profit_percentage'] = round(profit_percentage, 2)
-            else:
-                data['profit'] = None
-                data['profit_percentage'] = None
-        for temp_field in ['buy_amount', 'earliest_date', 'latest_date', 'net_cost']:
-            if temp_field in data:
-                del data[temp_field]
-
-    return list(summary.values())
+    return (holding.latest_trade_price - holding.average_cost) * holding.net_quantity
 
 
-def calculate_closed_position(group):
-    net_cost = group.get("total_cost", 0)
-    profit = group.get("profit", 0)
-    profit_percentage = group.get("profit_percentage", 0)
-    return net_cost, profit, profit_percentage
-
-
-def calculate_open_position(group):
-    quantity = group.get("total_quantity", 0)
-    current_price = group.get("current_price") or group.get("last_price", 0)
-    cost_basis = group.get("total_cost", 0)
-    market_value = current_price * quantity
-    profit = market_value - cost_basis
-    if quantity > 0 and cost_basis != 0:
-        profit_percentage = ((current_price / (cost_basis / quantity)) - 1) * 100
-    elif quantity < 0 and current_price != 0:
-        profit_percentage = ((cost_basis / quantity / current_price) - 1) * 100
-    else:
-        profit_percentage = 0
-    return market_value, profit, profit_percentage
-
-
-def aggregate_overall_metrics(merged_data):
-    overall_net_cash = 0
-    overall_profit = 0
-    overall_buy_amount = 0
-
-    for group in merged_data:
-        quantity = group.get("total_quantity", 0)
-        if quantity == 0:
-            net_cash, profit, _ = calculate_closed_position(group)
-        else:
-            cp = group.get("current_price") or group.get("last_price", 0)
-            net_cash = cp * quantity
-            _, profit, _ = calculate_open_position(group)
-        overall_net_cash += net_cash
-        overall_profit += profit
-
-        group_buy_amount = sum(
-            t['quantity'] * t['price_per_unit']
-            for t in group.get('trades', [])
-            if t.get('transaction_type', '').lower() == 'buy'
-        )
-        overall_buy_amount += group_buy_amount
-
-    overall_profit_percentage = (
-        round((overall_profit / overall_buy_amount) * 100, 2)
-        if overall_buy_amount else None
-    )
-    return overall_net_cash, overall_profit, overall_profit_percentage
+def get_profit_percentage(holding):
+    """
+    Computes the profit percentage relative to the total cost basis (net_cost).
+    Returns None if net_cost is zero.
+    """
+    if holding.net_cost:
+        return ((get_profit(holding)) / abs(holding.net_cost)) * 100
+    return None
