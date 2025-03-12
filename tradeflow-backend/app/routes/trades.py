@@ -4,7 +4,7 @@ import os
 from flask import Blueprint, request, jsonify, current_app
 
 from services.providers.factory import ProviderFactory
-from services.trade_holdings import process_new_trade
+from services.trade_holdings import process_new_trade, get_holding_period
 from app.database import db
 from app.models import Trade, UnrealizedHolding
 from app.schemas import TradeSchema
@@ -128,14 +128,28 @@ def list_holdings():
         holdings = UnrealizedHolding.query.all()
         results = []
         for h in holdings:
-            # Calculate optional derived metrics such as profit, holding_period, etc. if needed
-            # For instance:
-            if h.net_quantity != 0:
-                # For open holdings
-                profit = (h.latest_trade_price - h.average_cost) * h.net_quantity
+            holding_trades = Trade.query.filter(Trade.holding_id == h.id).order_by(Trade.trade_date.asc()).all()
+            holding_trade_dicts = [t.to_dict() for t in holding_trades]
+
+            profit = sum(
+                t.quantity * (t.price_per_unit if str(t.transaction_type).lower() == "sell" else -t.price_per_unit)
+                for t in holding_trades
+            )
+            if h.net_quantity == 0:
+                total_buy_amount = sum(
+                    t.quantity * t.price_per_unit
+                    for t in holding_trades
+                    if t.transaction_type.lower() == "buy"
+                )
+                total_sell_amount = sum(
+                    t.quantity * t.price_per_unit for t in holding_trades
+                    if t.transaction_type.lower() == "sell"
+                )
+
+                realized_profit = total_sell_amount - total_buy_amount
+                profit_percentage = (realized_profit / total_buy_amount * 100) if total_buy_amount else 0
             else:
-                # For closed holdings, or set profit to 0 if you prefer
-                profit = (h.latest_trade_price - h.average_cost) * h.net_quantity
+                profit_percentage = 0
 
             results.append({
                 "id": h.id,
@@ -148,8 +162,12 @@ def list_holdings():
                 "latest_trade_price": h.latest_trade_price,
                 "open_date": h.open_date.isoformat() if h.open_date else None,
                 "close_date": h.close_date.isoformat() if h.close_date else None,
+                "holding_period": get_holding_period(h),
+                "trade_count": len(holding_trade_dicts),
+                "trades": holding_trade_dicts,
                 "deleted_at": h.deleted_at.isoformat() if h.deleted_at else None,
                 "profit": round(profit, 2),
+                "profit_percentage": profit_percentage,
             })
         current_app.logger.info("Fetched all holdings.")
         return jsonify(dict_keys_to_camel(results)), 200

@@ -30,8 +30,7 @@ import {
 // Helper function to format numbers with commas and fixed decimals
 const formatNumber = (num, decimals = 2, locale = "en-US") => {
     return Number(num).toLocaleString(locale, {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
+        minimumFractionDigits: decimals, maximumFractionDigits: decimals,
     });
 };
 
@@ -45,9 +44,8 @@ function SummaryPage() {
     const [priceUpdatesLaunched, setPriceUpdatesLaunched] = useState(false);
     const [visibleColumns, setVisibleColumns] = useState({
         ticker: true,
-        source: true,
-        tradeType: true,
-        netQuantity: true,
+        tradeSource: true,
+        netQuantity: false,
         netCost: true,
         latestTradePrice: true,
         currentPrice: true,
@@ -55,8 +53,8 @@ function SummaryPage() {
         profitPercentage: true,
         changeToday: true,
         changeTodayPercentage: true,
-        holdingPeriod: true,
-        tradeCount: true,
+        holdingPeriod: false,
+        tradeCount: false,
     });
     const [includeClosed, setIncludeClosed] = useState(false);
     // Extra settings options
@@ -112,8 +110,7 @@ function SummaryPage() {
         if (!loading && holdingsData.length > 0 && !priceUpdatesLaunched) {
             setPriceUpdatesLaunched(true);
             holdingsData.forEach((holding, index) => {
-                // Only update for open positions
-                if (holding.netQuantity !== 0) {
+                if (holding.netQuantity !== 0) {  // Only update open positions
                     setHoldingsData((prev) => {
                         const newData = [...prev];
                         newData[index] = {...newData[index], updating: true};
@@ -122,19 +119,14 @@ function SummaryPage() {
                     fetch(`${process.env.REACT_APP_API_URL}/stock-info/${holding.ticker}`)
                         .then((res) => res.json())
                         .then((data) => {
-                            // Assuming the API returns lastPrice, changeToday, changeTodayPercentage
                             const currentPrice = data.lastPrice;
                             const changeToday = data.changeToday;
                             const changeTodayPercentage = data.changeTodayPercentage;
-                            const avgCost = holding.averageCost; // from holding record
-                            let updatedProfit, updatedProfitPercentage;
-                            if (holding.netQuantity > 0) {
-                                updatedProfit = (currentPrice - avgCost) * holding.netQuantity;
-                                updatedProfitPercentage = ((currentPrice / avgCost) - 1) * 100;
-                            } else {
-                                updatedProfit = (avgCost - currentPrice) * Math.abs(holding.netQuantity);
-                                updatedProfitPercentage = ((avgCost / currentPrice) - 1) * 100;
-                            }
+                            const avgCost = holding.averageCost;
+
+                            const updatedProfit = (currentPrice - avgCost) * holding.netQuantity;
+                            const updatedProfitPercentage = ((currentPrice - avgCost) / avgCost) * 100;
+
                             setHoldingsData((prev) => {
                                 const newData = [...prev];
                                 newData[index] = {
@@ -157,6 +149,18 @@ function SummaryPage() {
                                 return newData;
                             });
                         });
+                } else { // For closed positions explicitly set profit values (from backend ideally)
+                    setHoldingsData((prev) => {
+                        const newData = [...prev];
+                        newData[index] = {
+                            ...newData[index],
+                            currentPrice: null,
+                            profit: holding.profit || 0,
+                            profitPercentage: holding.profitPercentage || 0,
+                            updating: false,
+                        };
+                        return newData;
+                    });
                 }
             });
         }
@@ -164,47 +168,44 @@ function SummaryPage() {
 
     // Sort holdings data based on sortConfig
     const sortedData = [...holdingsData].sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+        let aValue, bValue;
+        if (sortConfig.key === "tradeSource") {
+            aValue = `${a.source || ""}${a.tradeType ? ` (${a.tradeType})` : ""}`.trim();
+            bValue = `${b.source} ${b.tradeType || ""}`.trim();
+        } else {
+            aValue = a[sortConfig.key] ?? "";
+            bValue = b[sortConfig.key] ?? "";
+        }
+
         if (typeof aValue === "number" && typeof bValue === "number") {
             return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
         }
-        const aStr = aValue ? aValue.toString() : "";
-        const bStr = bValue ? bValue.toString() : "";
-        return sortConfig.direction === "asc"
-            ? aStr.localeCompare(bStr)
-            : bStr.localeCompare(aStr);
+
+        return sortConfig.direction === "asc" ? String(aValue).localeCompare(String(bValue)) : String(bValue).localeCompare(String(aValue));
     });
 
     // Filter holdings based on search terms
     const filteredData = sortedData.filter((holding) => {
         const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
-        const matchesSearch = searchTerms.every(
-            (term) =>
-                holding.ticker.toLowerCase().includes(term) ||
-                holding.source.toLowerCase().includes(term) ||
-                (holding.tradeType && holding.tradeType.toLowerCase().includes(term))
-        );
+        const tradeSourceValue = `${holding.source} ${holding.tradeType || ""}`.toLowerCase();
+        const matchesSearch = searchTerms.every((term) => holding.ticker.toLowerCase().includes(term) || tradeSourceValue.includes(term));
         const includeHolding = includeClosed ? true : holding.netQuantity !== 0;
         return matchesSearch && includeHolding;
     });
 
+
     // Calculate totals from filtered data
-    const totals = filteredData.reduce(
-        (acc, holding) => {
-            acc.netQuantity += Number(holding.netQuantity) || 0;
-            acc.netCost += Number(holding.netCost) || 0;
-            acc.profit += holding.profit !== null ? Number(holding.profit) : 0;
-            acc.tradeCount += Number(holding.tradeCount) || 0;
-            return acc;
-        },
-        {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0}
-    );
+    const totals = filteredData.reduce((acc, holding) => {
+        acc.netQuantity += Number(holding.netQuantity) || 0;
+        acc.netCost += Number(holding.netCost) || 0;
+        acc.profit += holding.profit !== null ? Number(holding.profit) : 0;
+        acc.tradeCount += Number(holding.tradeCount) || 0;
+        return acc;
+    }, {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0});
 
     const handleSort = (key) => {
         setSortConfig((prev) => ({
-            key,
-            direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+            key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
         }));
     };
 
@@ -214,9 +215,7 @@ function SummaryPage() {
         html2canvas(input, {scale: 2}).then((canvas) => {
             const imgData = canvas.toDataURL("image/png");
             const pdf = new jsPDF({
-                orientation: "landscape",
-                unit: "px",
-                format: [canvas.width, canvas.height],
+                orientation: "landscape", unit: "px", format: [canvas.width, canvas.height],
             });
             pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
             pdf.save("holdings_summary.pdf");
@@ -224,24 +223,19 @@ function SummaryPage() {
     };
 
     // Define columns for the table and filter dropdown.
-    const columns = [
-        {key: "ticker", label: "Ticker"},
-        {key: "source", label: "Source"},
-        {key: "tradeType", label: "Type"},
-        {key: "netQuantity", label: "Net Quantity"},
-        {key: "netCost", label: "Net Cost"},
-        {key: "latestTradePrice", label: "Latest Trade Price"},
-        {key: "currentPrice", label: "Current Price"},
-        {key: "profit", label: "Profit"},
-        {key: "profitPercentage", label: "Profit (%)"},
-        {key: "changeToday", label: "Change Today"},
-        {key: "changeTodayPercentage", label: "Change Today (%)"},
-        {key: "holdingPeriod", label: "Holding Period (days)"},
-        {key: "tradeCount", label: "Trade Count"},
-    ];
+    const columns = [{key: "ticker", label: "Ticker"}, {key: "tradeSource", label: "Trade Source"}, // Merged source & type
+        {key: "netQuantity", label: "Net Quantity"}, {key: "netCost", label: "Net Cost"}, {
+            key: "latestTradePrice",
+            label: "Latest Trade Price"
+        }, {key: "currentPrice", label: "Current Price"}, {key: "profit", label: "Profit"}, {
+            key: "profitPercentage",
+            label: "Profit (%)"
+        }, {key: "changeToday", label: "Change Today"}, {
+            key: "changeTodayPercentage",
+            label: "Change Today (%)"
+        }, {key: "holdingPeriod", label: "Holding Period (days)"}, {key: "tradeCount", label: "Trade Count"},];
 
-    return (
-        <Box
+    return (<Box
             id="exportableContent"
             sx={{
                 backgroundColor: darkMode ? "#222" : "inherit",
@@ -253,9 +247,7 @@ function SummaryPage() {
             <Container
                 maxWidth="lg"
                 sx={{
-                    mt: 4,
-                    backgroundColor: darkMode ? "#333" : "inherit",
-                    color: darkMode ? "white" : "inherit",
+                    mt: 4, backgroundColor: darkMode ? "#333" : "inherit", color: darkMode ? "white" : "inherit",
                 }}
             >
                 <Typography variant="h4" gutterBottom>
@@ -263,10 +255,7 @@ function SummaryPage() {
                 </Typography>
 
                 {/* Aggregated Metrics Section */}
-                {aggLoading ? (
-                    <CircularProgress/>
-                ) : aggregateData ? (
-                    <Paper
+                {aggLoading ? (<CircularProgress/>) : aggregateData ? (<Paper
                         sx={{
                             p: 2,
                             mb: 2,
@@ -280,32 +269,21 @@ function SummaryPage() {
                         </Typography>
                         <Typography variant="body1">
                             Total Profit Percentage:{" "}
-                            {aggregateData.overall?.totalProfitPercentage !== null &&
-                            aggregateData.overall?.totalProfitPercentage !== undefined
-                                ? `${formatNumber(aggregateData.overall.totalProfitPercentage)}%`
-                                : "N/A"}
+                            {aggregateData.overall?.totalProfitPercentage !== null && aggregateData.overall?.totalProfitPercentage !== undefined ? `${formatNumber(aggregateData.overall.totalProfitPercentage)}%` : "N/A"}
                         </Typography>
                         <Typography variant="body1">
                             Change Today: ${formatNumber(aggregateData.overall?.changeToday || 0)}
                         </Typography>
                         <Typography variant="body1">
                             Change Today Percentage:{" "}
-                            {aggregateData.overall?.changeTodayPercentage !== null &&
-                            aggregateData.overall?.changeTodayPercentage !== undefined
-                                ? `${formatNumber(aggregateData.overall.changeTodayPercentage)}%`
-                                : "N/A"}
+                            {aggregateData.overall?.changeTodayPercentage !== null && aggregateData.overall?.changeTodayPercentage !== undefined ? `${formatNumber(aggregateData.overall.changeTodayPercentage)}%` : "N/A"}
                         </Typography>
-                    </Paper>
-                ) : null}
+                    </Paper>) : null}
 
                 {/* Settings Bar */}
                 <Box
                     sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        mb: 2,
-                        border: "1px solid lightgray",
-                        p: 1,
+                        display: "flex", alignItems: "center", mb: 2, border: "1px solid lightgray", p: 1,
                     }}
                 >
                     <FormControl sx={{minWidth: 200, mr: 2}}>
@@ -313,7 +291,6 @@ function SummaryPage() {
                             Columns
                         </InputLabel>
                         <Select
-                            labelId="columns-select-label"
                             multiple
                             value={Object.keys(visibleColumns).filter((key) => visibleColumns[key])}
                             onChange={(e) => {
@@ -324,95 +301,49 @@ function SummaryPage() {
                                 });
                                 setVisibleColumns(newVisible);
                             }}
-                            label="Columns"
-                            sx={{
-                                color: darkMode ? "white" : "inherit",
-                                backgroundColor: darkMode ? "#333" : "inherit",
-                            }}
-                            MenuProps={{
-                                PaperProps: {
-                                    sx: {
-                                        backgroundColor: darkMode ? "#333" : "inherit",
-                                        color: darkMode ? "white" : "inherit",
-                                    },
-                                },
-                            }}
-                            renderValue={(selected) =>
-                                selected.length > 3
-                                    ? `${selected.slice(0, 3).map((key) => {
-                                        const col = columns.find((c) => c.key === key);
-                                        return col ? col.label : key;
-                                    }).join(", ")}...`
-                                    : selected.map((key) => {
-                                        const col = columns.find((c) => c.key === key);
-                                        return col ? col.label : key;
-                                    }).join(", ")
-                            }
+                            renderValue={(selected) => selected.length > 3 ? `${selected.slice(0, 3).map((key) => columns.find((col) => col.key === key)?.label).join(", ")}...` : selected.map((key) => columns.find((col) => col.key === key)?.label).join(", ")}
                         >
-                            {columns.map((col) => (
-                                <MenuItem
-                                    key={col.key}
-                                    value={col.key}
-                                    sx={{
-                                        backgroundColor: darkMode ? "#333" : "inherit",
-                                        color: darkMode ? "white" : "inherit",
-                                    }}
-                                >
-                                    <Checkbox
-                                        sx={{
-                                            color: darkMode ? "white" : "inherit",
-                                            "&.Mui-checked": {color: darkMode ? "white" : "inherit"},
-                                        }}
-                                        checked={visibleColumns[col.key]}
-                                        disabled={col.key === "ticker"}
-                                    />
-                                    <ListItemText primary={col.label} sx={{color: darkMode ? "white" : "inherit"}}/>
-                                </MenuItem>
-                            ))}
+                            {columns.map((col) => (<MenuItem key={col.key} value={col.key}>
+                                    <Checkbox checked={visibleColumns[col.key]} disabled={col.key === "ticker"}/>
+                                    <ListItemText primary={col.label}/>
+                                </MenuItem>))}
                         </Select>
+
                     </FormControl>
                     <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
-                                checked={includeClosed}
-                                onChange={(e) => setIncludeClosed(e.target.checked)}
-                            />
-                        }
+                        control={<Checkbox
+                            sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
+                            checked={includeClosed}
+                            onChange={(e) => setIncludeClosed(e.target.checked)}
+                        />}
                         label="Include Closed Positions"
                         sx={{mr: 2}}
                     />
                     {/* Extra Options */}
                     <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
-                                checked={autoRefresh}
-                                onChange={(e) => setAutoRefresh(e.target.checked)}
-                            />
-                        }
+                        control={<Checkbox
+                            sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
+                            checked={autoRefresh}
+                            onChange={(e) => setAutoRefresh(e.target.checked)}
+                        />}
                         label="Auto Refresh"
                         sx={{mr: 2}}
                     />
                     <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
-                                checked={darkMode}
-                                onChange={(e) => setDarkMode(e.target.checked)}
-                            />
-                        }
+                        control={<Checkbox
+                            sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
+                            checked={darkMode}
+                            onChange={(e) => setDarkMode(e.target.checked)}
+                        />}
                         label="Dark Mode"
                         sx={{mr: 2}}
                     />
                     <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
-                                checked={highlightSignificant}
-                                onChange={(e) => setHighlightSignificant(e.target.checked)}
-                            />
-                        }
+                        control={<Checkbox
+                            sx={{mr: 2, color: darkMode ? "white" : "inherit"}}
+                            checked={highlightSignificant}
+                            onChange={(e) => setHighlightSignificant(e.target.checked)}
+                        />}
                         label="Highlight Significant Changes"
                     />
                     <Button variant="contained" sx={{ml: 2}} onClick={exportToPDF}>
@@ -434,14 +365,10 @@ function SummaryPage() {
                 />
 
                 {/* Detailed Holdings Table */}
-                {loading ? (
-                    <CircularProgress/>
-                ) : (
-                    <TableContainer
+                {loading ? (<CircularProgress/>) : (<TableContainer
                         component={Paper}
                         sx={{
-                            backgroundColor: darkMode ? "#333" : "inherit",
-                            color: darkMode ? "white" : "inherit",
+                            backgroundColor: darkMode ? "#333" : "inherit", color: darkMode ? "white" : "inherit",
                         }}
                     >
                         <Box
@@ -449,8 +376,7 @@ function SummaryPage() {
                                 "& .MuiTableCell-root": {
                                     color: darkMode ? "white" : "inherit",
                                     backgroundColor: darkMode ? "#333" : "inherit",
-                                },
-                                "& .MuiTableRow-root": {
+                                }, "& .MuiTableRow-root": {
                                     backgroundColor: darkMode ? "#333" : "inherit",
                                 },
                             }}
@@ -458,8 +384,7 @@ function SummaryPage() {
                             <Table>
                                 <TableHead>
                                     <TableRow>
-                                        {visibleColumns.ticker && (
-                                            <TableCell>
+                                        {visibleColumns.ticker && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "ticker"}
                                                     direction={sortConfig.key === "ticker" ? sortConfig.direction : "asc"}
@@ -467,32 +392,18 @@ function SummaryPage() {
                                                 >
                                                     Ticker
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.source && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.tradeSource && (<TableCell>
                                                 <TableSortLabel
-                                                    active={sortConfig.key === "source"}
-                                                    direction={sortConfig.key === "source" ? sortConfig.direction : "asc"}
-                                                    onClick={() => handleSort("source")}
+                                                    active={sortConfig.key === "tradeSource"}
+                                                    direction={sortConfig.key === "tradeSource" ? sortConfig.direction : "asc"}
+                                                    onClick={() => handleSort("tradeSource")}
                                                 >
-                                                    Source
+                                                    Trade Source
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.tradeType && (
-                                            <TableCell>
-                                                <TableSortLabel
-                                                    active={sortConfig.key === "tradeType"}
-                                                    direction={sortConfig.key === "tradeType" ? sortConfig.direction : "asc"}
-                                                    onClick={() => handleSort("tradeType")}
-                                                >
-                                                    Type
-                                                </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.netQuantity && (
-                                            <TableCell>
+                                            </TableCell>)}
+
+                                        {visibleColumns.netQuantity && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "netQuantity"}
                                                     direction={sortConfig.key === "netQuantity" ? sortConfig.direction : "asc"}
@@ -500,10 +411,8 @@ function SummaryPage() {
                                                 >
                                                     Net Quantity
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.netCost && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.netCost && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "netCost"}
                                                     direction={sortConfig.key === "netCost" ? sortConfig.direction : "asc"}
@@ -511,10 +420,8 @@ function SummaryPage() {
                                                 >
                                                     Net Cost
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.latestTradePrice && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.latestTradePrice && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "latestTradePrice"}
                                                     direction={sortConfig.key === "latestTradePrice" ? sortConfig.direction : "asc"}
@@ -522,10 +429,8 @@ function SummaryPage() {
                                                 >
                                                     Latest Trade Price
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.currentPrice && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.currentPrice && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "currentPrice"}
                                                     direction={sortConfig.key === "currentPrice" ? sortConfig.direction : "asc"}
@@ -533,10 +438,8 @@ function SummaryPage() {
                                                 >
                                                     Current Price
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.profit && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.profit && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "profit"}
                                                     direction={sortConfig.key === "profit" ? sortConfig.direction : "asc"}
@@ -544,8 +447,7 @@ function SummaryPage() {
                                                 >
                                                     Profit
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
+                                            </TableCell>)}
                                         {visibleColumns.profitPercentage && (
                                             <TableCell sx={{borderRight: "3px solid gray"}}>
                                                 <TableSortLabel
@@ -555,10 +457,8 @@ function SummaryPage() {
                                                 >
                                                     Profit (%)
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.changeToday && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.changeToday && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "changeToday"}
                                                     direction={sortConfig.key === "changeToday" ? sortConfig.direction : "asc"}
@@ -566,10 +466,8 @@ function SummaryPage() {
                                                 >
                                                     Change Today
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.changeTodayPercentage && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.changeTodayPercentage && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "changeTodayPercentage"}
                                                     direction={sortConfig.key === "changeTodayPercentage" ? sortConfig.direction : "asc"}
@@ -577,10 +475,8 @@ function SummaryPage() {
                                                 >
                                                     Change Today (%)
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.holdingPeriod && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.holdingPeriod && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "holdingPeriod"}
                                                     direction={sortConfig.key === "holdingPeriod" ? sortConfig.direction : "asc"}
@@ -588,10 +484,8 @@ function SummaryPage() {
                                                 >
                                                     Holding Period (days)
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
-                                        {visibleColumns.tradeCount && (
-                                            <TableCell>
+                                            </TableCell>)}
+                                        {visibleColumns.tradeCount && (<TableCell>
                                                 <TableSortLabel
                                                     active={sortConfig.key === "tradeCount"}
                                                     direction={sortConfig.key === "tradeCount" ? sortConfig.direction : "asc"}
@@ -599,109 +493,78 @@ function SummaryPage() {
                                                 >
                                                     Trade Count
                                                 </TableSortLabel>
-                                            </TableCell>
-                                        )}
+                                            </TableCell>)}
                                     </TableRow>
                                 </TableHead>
 
                                 <TableBody>
                                     {filteredData.map((holding) => {
-                                        return (
-                                            <TableRow key={holding.id}>
+                                        return (<TableRow key={holding.id}>
                                                 {visibleColumns.ticker && <TableCell>{holding.ticker}</TableCell>}
-                                                {visibleColumns.source && <TableCell>{holding.source}</TableCell>}
-                                                {visibleColumns.tradeType && <TableCell>{holding.tradeType}</TableCell>}
-                                                {visibleColumns.netQuantity && (
-                                                    <TableCell
+                                                {visibleColumns.tradeSource && (<TableCell>
+                                                        {`${holding.source}${holding.tradeType ? ` (${holding.tradeType})` : ""}`}
+                                                    </TableCell>)}
+                                                {visibleColumns.netQuantity && (<TableCell
                                                         sx={{
                                                             color: holding.netQuantity === 0 ? "blue" : "inherit",
                                                             fontWeight: holding.netQuantity === 0 ? "bold" : "normal",
                                                         }}
                                                     >
-                                                        {holding.netQuantity === 0
-                                                            ? "Closed"
-                                                            : Number(holding.netQuantity).toLocaleString()}
-                                                    </TableCell>
-                                                )}
+                                                        {holding.netQuantity === 0 ? "Closed" : Number(holding.netQuantity).toLocaleString()}
+                                                    </TableCell>)}
                                                 {visibleColumns.netCost && (
-                                                    <TableCell>${formatNumber(holding.netCost)}</TableCell>
-                                                )}
-                                                {visibleColumns.latestTradePrice && (
-                                                    <TableCell>
-                                                        {holding.latestTradePrice
-                                                            ? `$${formatNumber(holding.latestTradePrice)}`
-                                                            : "N/A"}
-                                                    </TableCell>
-                                                )}
-                                                {visibleColumns.currentPrice && (
-                                                    <TableCell>
-                                                        {holding.updating ? (
-                                                            <CircularProgress size={16}/>
-                                                        ) : holding.currentPrice !== null && holding.currentPrice !== undefined ? (
-                                                            <span style={{color: darkMode ? "white" : "black"}}>
-                                ${formatNumber(holding.currentPrice)}
-                              </span>
-                                                        ) : (
-                                                            <span style={{color: "lightgray"}}>N/A</span>
-                                                        )}
-                                                    </TableCell>
-                                                )}
-                                                {visibleColumns.profit && (
-                                                    <TableCell>
-                                                        {holding.updating ? (
-                                                            <CircularProgress size={16}/>
-                                                        ) : holding.profit !== null ? (
+                                                    <TableCell>${formatNumber(holding.netCost)}</TableCell>)}
+                                                {visibleColumns.latestTradePrice && (<TableCell>
+                                                        {holding.latestTradePrice ? `$${formatNumber(holding.latestTradePrice)}` : "N/A"}
+                                                    </TableCell>)}
+                                                {visibleColumns.currentPrice && (<TableCell>
+                                                        {holding.updating ? (<CircularProgress
+                                                                size={16}/>) : holding.currentPrice != null ? (
+                                                            <span>${formatNumber(holding.currentPrice)}</span>) : (
+                                                            <span style={{color: "lightgray"}}>N/A</span>)}
+                                                    </TableCell>)}
+
+                                                {visibleColumns.profit && (<TableCell>
+                                                        {holding.updating ? (<CircularProgress
+                                                                size={16}/>) : holding.profit !== null && holding.profit !== undefined ? (
                                                             <span
-                                                                style={{color: Number(holding.profit) >= 0 ? "green" : "red"}}>
-                                ${formatNumber(holding.profit)}
-                              </span>
-                                                        ) : (
-                                                            <span style={{color: "lightgray"}}>N/A</span>
-                                                        )}
-                                                    </TableCell>
-                                                )}
+                                                                style={{color: holding.profit >= 0 ? "green" : "red"}}>
+                                                    ${formatNumber(holding.profit)}
+                                                  </span>) : (<span style={{color: "lightgray"}}>N/A</span>)}
+                                                    </TableCell>)}
+
                                                 {visibleColumns.profitPercentage && (
                                                     <TableCell sx={{borderRight: "3px solid gray"}}>
-                                                        {holding.updating ? (
-                                                            <CircularProgress size={16}/>
-                                                        ) : holding.profitPercentage !== null ? (
+                                                        {holding.updating ? (<CircularProgress
+                                                                size={16}/>) : holding.profitPercentage !== null && holding.profitPercentage !== undefined ? (
                                                             <span
-                                                                style={{color: Number(holding.profitPercentage) >= 0 ? "green" : "red"}}>
-                                {formatNumber(holding.profitPercentage)}%
-                              </span>
-                                                        ) : (
-                                                            <span style={{color: "lightgray"}}>N/A</span>
-                                                        )}
-                                                    </TableCell>
-                                                )}
-                                                {visibleColumns.changeToday && (
-                                                    <TableCell>
-                                                        {holding.changeToday !== undefined
-                                                            ? `$${formatNumber(holding.changeToday)}`
-                                                            : "N/A"}
-                                                    </TableCell>
-                                                )}
-                                                {visibleColumns.changeTodayPercentage && (
-                                                    <TableCell>
-                                                        {holding.changeTodayPercentage !== undefined
-                                                            ? `${formatNumber(holding.changeTodayPercentage)}%`
-                                                            : "N/A"}
-                                                    </TableCell>
-                                                )}
-                                                {visibleColumns.holdingPeriod && (
-                                                    <TableCell>
+                                                                style={{color: holding.profitPercentage >= 0 ? "green" : "red"}}>
+                                                    {formatNumber(holding.profitPercentage)}%
+                                                  </span>) : (<span style={{color: "lightgray"}}>N/A</span>)}
+                                                    </TableCell>)}
+
+                                                {visibleColumns.changeToday && (<TableCell>
+                                                        {holding.changeToday !== undefined && holding.changeToday !== null ? (
+                                                            <span
+                                                                style={{color: holding.changeToday >= 0 ? "green" : "red"}}>
+                                                    ${formatNumber(holding.changeToday)}
+                                                  </span>) : (<span style={{color: "lightgray"}}>N/A</span>)}
+                                                    </TableCell>)}
+
+                                                {visibleColumns.changeTodayPercentage && (<TableCell>
+                                                        {holding.changeTodayPercentage !== null && holding.changeTodayPercentage !== undefined ? (
+                                                            <span
+                                                                style={{color: holding.changeTodayPercentage >= 0 ? "green" : "red"}}>
+                                                    {formatNumber(holding.changeTodayPercentage)}%
+                                                  </span>) : (<span style={{color: "lightgray"}}>N/A</span>)}
+                                                    </TableCell>)}
+                                                {visibleColumns.holdingPeriod && (<TableCell>
                                                         {holding.holdingPeriod !== null ? holding.holdingPeriod : "N/A"}
-                                                    </TableCell>
-                                                )}
-                                                {visibleColumns.tradeCount && (
-                                                    <TableCell>
-                                                        {holding.tradeCount !== undefined
-                                                            ? Number(holding.tradeCount).toLocaleString()
-                                                            : "N/A"}
-                                                    </TableCell>
-                                                )}
-                                            </TableRow>
-                                        );
+                                                    </TableCell>)}
+                                                {visibleColumns.tradeCount && (<TableCell>
+                                                        {holding.tradeCount !== undefined ? Number(holding.tradeCount).toLocaleString() : "N/A"}
+                                                    </TableCell>)}
+                                            </TableRow>);
                                     })}
                                 </TableBody>
 
@@ -710,41 +573,31 @@ function SummaryPage() {
                                         {visibleColumns.ticker && <TableCell>Totals</TableCell>}
                                         {visibleColumns.source && <TableCell/>}
                                         {visibleColumns.tradeType && <TableCell/>}
-                                        {visibleColumns.netQuantity && (
-                                            <TableCell>
-                                                {totals.netQuantity === 0
-                                                    ? "Closed"
-                                                    : Number(totals.netQuantity).toLocaleString()}
-                                            </TableCell>
-                                        )}
+                                        {visibleColumns.netQuantity && (<TableCell>
+                                                {totals.netQuantity === 0 ? "Closed" : Number(totals.netQuantity).toLocaleString()}
+                                            </TableCell>)}
                                         {visibleColumns.netCost && (
-                                            <TableCell>${formatNumber(totals.netCost)}</TableCell>
-                                        )}
+                                            <TableCell>${formatNumber(totals.netCost)}</TableCell>)}
                                         {visibleColumns.latestTradePrice && <TableCell/>}
                                         {visibleColumns.currentPrice && <TableCell/>}
                                         {visibleColumns.profit && (
                                             <TableCell sx={{color: totals.profit >= 0 ? "green" : "red"}}>
                                                 ${formatNumber(totals.profit)}
-                                            </TableCell>
-                                        )}
+                                            </TableCell>)}
                                         {visibleColumns.profitPercentage && (
-                                            <TableCell sx={{borderRight: "3px solid gray"}}></TableCell>
-                                        )}
+                                            <TableCell sx={{borderRight: "3px solid gray"}}></TableCell>)}
                                         {visibleColumns.changeToday && <TableCell/>}
                                         {visibleColumns.changeTodayPercentage && <TableCell/>}
                                         {visibleColumns.holdingPeriod && <TableCell/>}
                                         {visibleColumns.tradeCount && (
-                                            <TableCell>{Number(totals.tradeCount).toLocaleString()}</TableCell>
-                                        )}
+                                            <TableCell>{Number(totals.tradeCount).toLocaleString()}</TableCell>)}
                                     </TableRow>
                                 </TableFooter>
                             </Table>
                         </Box>
-                    </TableContainer>
-                )}
+                    </TableContainer>)}
             </Container>
-        </Box>
-    );
+        </Box>);
 }
 
 export default SummaryPage;
