@@ -27,7 +27,7 @@ def migrate_json_file():
     if not os.path.exists(TRADES_JSON_FILE_PATH):
         print(f"File {TRADES_JSON_FILE_PATH} does not exist.")
         return
-    with open(TRADES_JSON_FILE_PATH, "r") as f:
+    with open(TRADES_JSON_FILE_PATH) as f:
         try:
             trades = json.load(f)
         except json.JSONDecodeError:
@@ -40,5 +40,5 @@ def migrate_json_file():
     print("Migration completed successfully.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     migrate_json_file()

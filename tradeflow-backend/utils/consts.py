@@ -19,6 +19,7 @@ def find_project_root(marker_file="app"):
             return current_path
         current_path = current_path.parent  # Move up one level
 
+
 # PATHS
 BACKEND_PROJECT_ROOT_PATH = find_project_root()
 APP_FOLDER_PATH = BACKEND_PROJECT_ROOT_PATH / "app"
@@ -31,4 +32,4 @@ DATA_FOLDER_PATH = BACKEND_PROJECT_ROOT_PATH / "data"
 UTILS_FOLDER_PATH = BACKEND_PROJECT_ROOT_PATH / "utils"
 TRADES_JSON_FILE_PATH = DATA_FOLDER_PATH / "trades.json"
 
-EXCHANGES = ['NASDAQ', 'NYSEARCA', 'NYSE', 'AMEX']
+EXCHANGES = ["NASDAQ", "NYSEARCA", "NYSE", "AMEX"]

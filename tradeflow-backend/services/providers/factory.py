@@ -1,16 +1,17 @@
-import time
 import logging
 from datetime import datetime
-from typing import List, Tuple
 
 from app.models import Stock
-from services.providers.base_finance_provider import BaseFinanceProvider, ChangeToday
+from services.providers.base_finance_provider import BaseFinanceProvider
+from services.providers.base_finance_provider import ChangeToday
 from services.providers.google_finance_provider import GoogleFinanceProvider
 from services.providers.yahoo_finance_provider import YahooFinanceProvider
 
 
 class ProviderFactory:
-    def __init__(self, providers: List[BaseFinanceProvider] = None, cache_duration: int = 300):
+    def __init__(
+        self, providers: list[BaseFinanceProvider] = None, cache_duration: int = 300
+    ):
         """
         Initialize the factory with a list of providers and a cache_duration (in seconds).
         """
@@ -51,7 +52,9 @@ class ProviderFactory:
                 self.cache[symbol] = stock
                 return stock
             except Exception as e:
-                logging.warning(f"Provider {provider.__class__.__name__} failed for {symbol}: {e}")
+                logging.warning(
+                    f"Provider {provider.__class__.__name__} failed for {symbol}: {e}"
+                )
                 last_exception = e
 
         raise last_exception
@@ -68,4 +71,6 @@ class ProviderFactory:
         Returns ChangeToday namedtuple.
         """
         stock = self.get_stock(symbol)
-        return ChangeToday(change=stock.change_today, change_percentage=stock.change_today_percentage)
+        return ChangeToday(
+            change=stock.change_today, change_percentage=stock.change_today_percentage
+        )

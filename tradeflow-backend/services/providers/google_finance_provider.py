@@ -1,17 +1,15 @@
-import re
 import time
 from datetime import datetime
-from typing import Optional
 
 import requests
-from bs4 import BeautifulSoup
-
 from app.models import Stock
+from bs4 import BeautifulSoup
 from exceptions import StockNotFoundException
-from services.providers.base_finance_provider import BaseFinanceProvider, ChangeToday
+from services.providers.base_finance_provider import BaseFinanceProvider
+from services.providers.base_finance_provider import ChangeToday
+from services.providers.retry_decorator import retry
 from utils.consts import EXCHANGES  # List of known exchanges
 from utils.logger import log
-from services.providers.retry_decorator import retry
 
 
 class GoogleFinanceProvider(BaseFinanceProvider):
@@ -25,7 +23,9 @@ class GoogleFinanceProvider(BaseFinanceProvider):
         """
         self.cache_duration = cache_duration
         self.cache = {}
-        log.debug(f"GooglePriceProvider initialized with cache_duration={cache_duration}")
+        log.debug(
+            f"GooglePriceProvider initialized with cache_duration={cache_duration}"
+        )
 
     def _parse_price(self, soup: BeautifulSoup) -> float:
         """
@@ -42,7 +42,7 @@ class GoogleFinanceProvider(BaseFinanceProvider):
             log.warning(f"Invalid price format: {price_text}")
             return None
 
-    def _parse_previous_close(self, soup: BeautifulSoup) -> Optional[float]:
+    def _parse_previous_close(self, soup: BeautifulSoup) -> float | None:
         """
         Private helper that searches the page for the "Previous close" field and returns its price.
         Example snippet:
@@ -61,7 +61,9 @@ class GoogleFinanceProvider(BaseFinanceProvider):
             if label and "Previous close" in label.text:
                 price_div = container.find("div", class_="P6K39c")
                 if price_div:
-                    price_text = price_div.text.strip().replace("$", "").replace(",", "")
+                    price_text = (
+                        price_div.text.strip().replace("$", "").replace(",", "")
+                    )
                     try:
                         return float(price_text)
                     except ValueError:
@@ -108,24 +110,26 @@ class GoogleFinanceProvider(BaseFinanceProvider):
 
                 previous_close = self._parse_previous_close(soup)
                 if previous_close is None:
-                    log.warning(f"Could not parse previous close for {ticker} on {exchange}.")
+                    log.warning(
+                        f"Could not parse previous close for {ticker} on {exchange}."
+                    )
                     continue
                 else:
                     change_today = price - previous_close
                     change_today_percentage = (change_today / previous_close) * 100
-
-
 
                 # Since we only have previous close, we set today's change as 0
                 stock = Stock(
                     price=price,
                     change_today=change_today,
                     change_today_percentage=change_today_percentage,
-                    last_updated=datetime.now()
+                    last_updated=datetime.now(),
                 )
-                log.debug(f"Successfully scraped stock data for '{ticker}' from {exchange}. "
-                          f" Price: {stock.price}, Previous close: {previous_close}"
-                          f" Change today: {stock.change_today}, Change percentage: {stock.change_today_percentage}")
+                log.debug(
+                    f"Successfully scraped stock data for '{ticker}' from {exchange}. "
+                    f" Price: {stock.price}, Previous close: {previous_close}"
+                    f" Change today: {stock.change_today}, Change percentage: {stock.change_today_percentage}"
+                )
                 self.cache[ticker] = (stock, current_time)
                 return stock
             except Exception as e:
@@ -146,4 +150,6 @@ class GoogleFinanceProvider(BaseFinanceProvider):
         Convenience method returning today's change and change percentage as a ChangeToday namedtuple.
         """
         stock = self.get_stock(symbol)
-        return ChangeToday(change=stock.change_today, change_percentage=stock.change_today_percentage)
+        return ChangeToday(
+            change=stock.change_today, change_percentage=stock.change_today_percentage
+        )

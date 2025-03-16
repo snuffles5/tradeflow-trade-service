@@ -1,8 +1,9 @@
 # services/trade_holdings.py
-
 from datetime import datetime
-from app.models import UnrealizedHolding, Trade
+
 from app.database import db
+from app.models import UnrealizedHolding
+from utils.logger import log
 
 
 def update_unrealized_holding(new_trade):
@@ -25,14 +26,16 @@ def update_unrealized_holding(new_trade):
           * Increase net_cost by (effective_quantity * trade price).
           * For buy trades, recalc weighted average cost (if the holding remains open).
           * Always update latest_trade_price to the new trade's price.
-          * If the new net_quantity becomes 0, then set close_date and deleted_at to the trade’s date and set average_cost to the trade’s price.
+          * If the new net_quantity becomes 0, then set close_date and deleted_at to the trade’s date and set
+          average_cost to the trade’s price.
       - Otherwise, create a new holding with open_date set to the trade’s date.
 
     Finally, assign the holding’s id to new_trade.holding_id.
     """
+    log.debug(f"Processing new trade {new_trade.id} for holding update.")
     # Determine effective quantity (sell trades become negative).
     effective_quantity = new_trade.quantity
-    if new_trade.transaction_type.lower() == 'sell':
+    if new_trade.transaction_type.lower() == "sell":
         effective_quantity = -abs(new_trade.quantity)
 
     trade_value = effective_quantity * new_trade.price_per_unit
@@ -42,7 +45,7 @@ def update_unrealized_holding(new_trade):
         ticker=new_trade.ticker,
         source=new_trade.source,
         trade_type=new_trade.trade_type,
-        close_date=None
+        close_date=None,
     ).first()
 
     if holding:
@@ -59,9 +62,9 @@ def update_unrealized_holding(new_trade):
         if effective_quantity > 0:
             if old_quantity > 0:
                 holding.average_cost = (
-                        (old_quantity * holding.average_cost + effective_quantity * new_trade.price_per_unit)
-                        / (old_quantity + effective_quantity)
-                )
+                    old_quantity * holding.average_cost
+                    + effective_quantity * new_trade.price_per_unit
+                ) / (old_quantity + effective_quantity)
             else:
                 # If no prior buy quantity exists, set to new trade price.
                 holding.average_cost = new_trade.price_per_unit
@@ -88,7 +91,7 @@ def update_unrealized_holding(new_trade):
             latest_trade_price=new_trade.price_per_unit,
             open_date=new_trade.trade_date,
             close_date=None,
-            deleted_at=None
+            deleted_at=None,
         )
         db.session.add(holding)
         db.session.flush()  # Ensure holding.id is assigned.
@@ -96,6 +99,7 @@ def update_unrealized_holding(new_trade):
     # Link the trade to the holding.
     new_trade.holding_id = holding.id
     db.session.add(new_trade)
+    log.debug(f"Updated holding {holding.id} with trade {new_trade.id}.")
     return holding
 
 

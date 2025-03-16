@@ -14,7 +14,7 @@ class SoftDeleteMixin:
 
 
 class Trade(SoftDeleteMixin, db.Model):
-    __tablename__ = 'trades'
+    __tablename__ = "trades"
 
     id = db.Column(db.Integer, primary_key=True)
     trade_type = db.Column(db.String(50))  # e.g., 'Personal' or 'Joint'
@@ -25,11 +25,15 @@ class Trade(SoftDeleteMixin, db.Model):
     price_per_unit = db.Column(db.Float, nullable=False)
     trade_date = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # New field to link a trade with its aggregated unrealized holding (if applicable)
-    holding_id = db.Column(db.Integer, db.ForeignKey('unrealized_holdings.id'), nullable=True)
-    holding = db.relationship('UnrealizedHolding', backref='trades')
+    holding_id = db.Column(
+        db.Integer, db.ForeignKey("unrealized_holdings.id"), nullable=True
+    )
+    holding = db.relationship("UnrealizedHolding", backref="trades")
 
     def __repr__(self):
         return f"<Trade {self.ticker} {self.transaction_type} {self.quantity} at {self.price_per_unit}>"
@@ -39,7 +43,7 @@ class Trade(SoftDeleteMixin, db.Model):
 
 
 class LastPriceInfo(SoftDeleteMixin, db.Model):
-    __tablename__ = 'last_price_info'
+    __tablename__ = "last_price_info"
 
     id = db.Column(db.Integer, primary_key=True)
     ticker = db.Column(db.String(10), nullable=False)
@@ -61,7 +65,7 @@ class LastPriceInfo(SoftDeleteMixin, db.Model):
 
 
 class UnrealizedHolding(SoftDeleteMixin, db.Model):
-    __tablename__ = 'unrealized_holdings'
+    __tablename__ = "unrealized_holdings"
 
     id = db.Column(db.Integer, primary_key=True)
     ticker = db.Column(db.String(10), nullable=False)
@@ -70,20 +74,27 @@ class UnrealizedHolding(SoftDeleteMixin, db.Model):
 
     # New aggregated fields
     net_quantity = db.Column(db.Float, nullable=False)  # renamed from total_holding
-    average_cost = db.Column(db.Float, nullable=False)  # weighted average cost per share
-    net_cost = db.Column(db.Float, nullable=False)  # total cost basis (e.g. sum(quantity * price))
+    average_cost = db.Column(
+        db.Float, nullable=False
+    )  # weighted average cost per share
+    net_cost = db.Column(
+        db.Float, nullable=False
+    )  # total cost basis (e.g. sum(quantity * price))
     latest_trade_price = db.Column(db.Float, nullable=False)
     open_date = db.Column(db.DateTime, nullable=False)
     close_date = db.Column(db.DateTime, nullable=True)
     stop_loss = db.Column(db.Float, nullable=True)
 
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow,
-                           onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def __repr__(self):
-        return (f"<UnrealizedHolding {self.ticker} {self.trade_type}: "
-                f"NetQty={self.net_quantity}, AvgCost={self.average_cost}, "
-                f"NetCost={self.net_cost}, LatestPrice={self.latest_trade_price}>")
+        return (
+            f"<UnrealizedHolding {self.ticker} {self.trade_type}: "
+            f"NetQty={self.net_quantity}, AvgCost={self.average_cost}, "
+            f"NetCost={self.net_cost}, LatestPrice={self.latest_trade_price}>"
+        )
 
     def to_dict(self):
         return {col.name: getattr(self, col.name) for col in self.__table__.columns}

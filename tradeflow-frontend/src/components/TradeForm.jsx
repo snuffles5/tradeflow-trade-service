@@ -2,7 +2,7 @@
 src/components/TradeForm.jsx
 
 This module defines the TradeForm component, which provides a user interface for submitting trade data.
-Users can input details such as type, source, transaction type, ticker, quantity, price per unit, custom date, and stop loss.
+Users can input details such as type, source, transaction type, ticker, quantity, price per unit, and custom date.
 The component manages form state, validation, and submission to the backend API.
 */
 
@@ -31,7 +31,6 @@ function TradeForm() {
         pricePerUnit: "",
         useCustomDate: false,
         date: "",
-        stopLoss: "",
     });
 
     const handleChange = (e) => {
@@ -47,7 +46,7 @@ function TradeForm() {
 
         const dateToUse = formData.useCustomDate
             ? formData.date
-            : new Date().toISOString().split("T")[0];
+            : new Date().toISOString().split("T")[0]; // "YYYY-MM-DD" format
 
         if (!formData.ticker.trim()) {
             alert("Ticker is required.");
@@ -59,14 +58,13 @@ function TradeForm() {
         }
 
         const payload = {
-            type: formData.type,
+            tradeType: formData.type,
             source: formData.source,
             transactionType: formData.transactionType,
             ticker: formData.ticker,
             quantity: parseFloat(formData.quantity),
             pricePerUnit: parseFloat(formData.pricePerUnit),
-            date: dateToUse,
-            stopLoss: parseFloat(formData.stopLoss) || 0,
+            tradeDate: dateToUse,
         };
 
         console.log("Submitting payload to:", process.env.REACT_APP_API_URL, ", payload: ", payload);
@@ -219,19 +217,6 @@ function TradeForm() {
                                 />
                             </Grid>
                         )}
-
-                        {/* Stop Loss */}
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Stop Loss"
-                                name="stopLoss"
-                                type="number"
-                                inputProps={{step: "0.01"}}
-                                value={formData.stopLoss}
-                                onChange={handleChange}
-                                fullWidth
-                            />
-                        </Grid>
 
                         {/* Submit Button */}
                         <Grid item xs={12}>

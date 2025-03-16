@@ -1,12 +1,13 @@
 # app/__init__.py
-import os
 import logging
+import os
+
 from flask import Flask
 from flask_cors import CORS
 from flask_migrate import Migrate
 from sqlalchemy import inspect
-
 from utils.logger import log
+
 from .database import db
 from .routes.trades import trades_bp
 
@@ -17,7 +18,8 @@ def create_app():
     # Configure secret key and database
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default_secret_key")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-        "SQLALCHEMY_DATABASE_URI", "mysql://user:pass@localhost:3306/tradeflow"
+        "SQLALCHEMY_DATABASE_URI",
+        "mysql://root:DanielEni1606!@localhost:3306/tradeflow",
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -31,7 +33,11 @@ def create_app():
     with app.app_context():
         inspector = inspect(db.engine)
         tables = inspector.get_table_names()
-        log.debug(f"{tables} tables found in the database." if tables else "No tables found in the database.")
+        log.debug(
+            f"{tables} tables found in the database."
+            if tables
+            else "No tables found in the database."
+        )
 
     # Initialize Flask-Migrate
     Migrate(app, db)
