@@ -34,6 +34,9 @@ class Trade(SoftDeleteMixin, db.Model):
     def __repr__(self):
         return f"<Trade {self.ticker} {self.transaction_type} {self.quantity} at {self.price_per_unit}>"
 
+    def to_dict(self):
+        return {col.name: getattr(self, col.name) for col in self.__table__.columns}
+
 
 class LastPriceInfo(SoftDeleteMixin, db.Model):
     __tablename__ = 'last_price_info'
@@ -52,6 +55,9 @@ class LastPriceInfo(SoftDeleteMixin, db.Model):
 
     def __repr__(self):
         return f"<LastPriceInfo {self.ticker} {self.last_fetched_price} from {self.source}>"
+
+    def to_dict(self):
+        return {col.name: getattr(self, col.name) for col in self.__table__.columns}
 
 
 class UnrealizedHolding(SoftDeleteMixin, db.Model):
@@ -78,6 +84,9 @@ class UnrealizedHolding(SoftDeleteMixin, db.Model):
         return (f"<UnrealizedHolding {self.ticker} {self.trade_type}: "
                 f"NetQty={self.net_quantity}, AvgCost={self.average_cost}, "
                 f"NetCost={self.net_cost}, LatestPrice={self.latest_trade_price}>")
+
+    def to_dict(self):
+        return {col.name: getattr(self, col.name) for col in self.__table__.columns}
 
 
 @dataclass
