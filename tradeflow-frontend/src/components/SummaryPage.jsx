@@ -88,7 +88,7 @@ function SummaryPage() {
     border: darkMode ? "white" : "black",
     positive: darkMode ? "#90ee90" : "green",
     negative: darkMode ? "#ff7f7f" : "red",
-    highlight: darkMode ? "#555" : "#f0f0f0",
+    highlight: darkMode ? "#675723" : "#fff5c5",
     outerBackground: darkMode ? "#222" : "inherit",
   };
 
