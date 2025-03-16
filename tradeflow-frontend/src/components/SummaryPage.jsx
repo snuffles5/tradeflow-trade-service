@@ -152,10 +152,10 @@ function SummaryPage() {
             format: (row) =>
                 row.updating ? (
                     <CircularProgress size={16}/>
-                ) : row.profit != null ? (
+                ) : row.profit != null && !Number.isNaN(Number(row.profit)) ? (
                     <span style={{color: row.profit >= 0 ? colors.positive : colors.negative}}>
-            ${formatNumber(row.profit)}
-          </span>
+                  ${formatNumber(row.profit)}
+                </span>
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
@@ -167,10 +167,10 @@ function SummaryPage() {
             format: (row) =>
                 row.updating ? (
                     <CircularProgress size={16}/>
-                ) : row.profitPercentage != null ? (
+                ) : row.profitPercentage != null && !Number.isNaN(Number(row.profitPercentage)) ? (
                     <span style={{color: row.profitPercentage >= 0 ? colors.positive : colors.negative}}>
             {formatNumber(row.profitPercentage)}%
-          </span>
+            </span>
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
@@ -357,14 +357,15 @@ function SummaryPage() {
         [filteredData]
     );
 
-// Calculate totals using the full sortedData array rather than filteredData.
+    // Calculate totals using the full sortedData array rather than filteredData.
     const overallTotals = useMemo(
         () =>
-            sortedData.reduce(
+            sortedData.filter((holding) => !holding.updating).reduce(
                 (acc, holding) => {
                     acc.netQuantity += Number(holding.netQuantity) || 0;
                     acc.netCost += Number(holding.netCost) || 0;
-                    acc.profit += holding.profit != null ? Number(holding.profit) : 0;
+                    const profit = Number(holding.profit);
+                    acc.profit += !Number.isNaN(profit) ? profit : 0;
                     acc.tradeCount += Number(holding.tradeCount) || 0;
                     acc.currentMarketValue +=
                         holding.netQuantity != null && holding.currentPrice != null
@@ -472,21 +473,21 @@ function SummaryPage() {
                             <Typography variant="h6">Calculated Performance Metrics</Typography>
                             <Typography variant="body1">
                                 Total Profit Percentage:{" "}
-                                {localProfitPercentage != null ? (
+                                {(localProfitPercentage != null && !Number.isNaN(localProfitPercentage)) ? (
                                     <span
                                         style={{color: localProfitPercentage >= 0 ? colors.positive : colors.negative}}>
-                                        {formatNumber(localProfitPercentage)}%
-                                    </span>
+                                  {formatNumber(localProfitPercentage)}%
+                                </span>
                                 ) : (
                                     "N/A"
                                 )}
                             </Typography>
                             <Typography variant="body1">
                                 Total Profit:{" "}
-                                {localProfit != null ? (
+                                {(localProfit != null && !Number.isNaN(localProfit)) ? (
                                     <span style={{color: localProfit >= 0 ? colors.positive : colors.negative}}>
-                                ${formatNumber(localProfit)}
-                              </span>
+                                       ${formatNumber(localProfit)}
+                                     </span>
                                 ) : (
                                     "N/A"
                                 )}
