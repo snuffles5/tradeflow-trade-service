@@ -28,7 +28,7 @@ class GoogleFinanceProvider(BaseFinanceProvider):
             f"GooglePriceProvider initialized with cache_duration={cache_duration}"
         )
 
-    def _parse_price(self, soup: BeautifulSoup) -> float:
+    def _parse_price(self, soup: BeautifulSoup) -> Optional[float]:
         """
         Private helper that parses the stock price from the BeautifulSoup object.
         """
