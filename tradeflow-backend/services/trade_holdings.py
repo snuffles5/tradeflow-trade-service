@@ -2,6 +2,7 @@
 from datetime import datetime
 
 from app.database import db
+from app.models import Trade
 from app.models import UnrealizedHolding
 from utils.logger import log
 
@@ -16,21 +17,7 @@ def update_unrealized_holding(new_trade):
       - deleted_at: set when the holding is closed.
       - latest_trade_price: always updated to the current trade's price.
 
-    The effective quantity is calculated as:
-      - For buy trades: positive quantity.
-      - For sell trades: negative quantity.
-
-    Logic:
-      - If an active holding exists:
-          * Update net_quantity = old_quantity + effective_quantity.
-          * Increase net_cost by (effective_quantity * trade price).
-          * For buy trades, recalc weighted average cost (if the holding remains open).
-          * Always update latest_trade_price to the new trade's price.
-          * If the new net_quantity becomes 0, then set close_date and deleted_at to the trade’s date and set
-          average_cost to the trade’s price.
-      - Otherwise, create a new holding with open_date set to the trade’s date.
-
-    Finally, assign the holding’s id to new_trade.holding_id.
+    Finally, assigns the holding's id to new_trade.holding_id.
     """
     log.debug(f"Processing new trade {new_trade.id} for holding update.")
     # Determine effective quantity (sell trades become negative).
@@ -66,7 +53,6 @@ def update_unrealized_holding(new_trade):
                     + effective_quantity * new_trade.price_per_unit
                 ) / (old_quantity + effective_quantity)
             else:
-                # If no prior buy quantity exists, set to new trade price.
                 holding.average_cost = new_trade.price_per_unit
 
         holding.net_quantity = new_quantity
@@ -75,7 +61,6 @@ def update_unrealized_holding(new_trade):
             # Holding is now closed.
             holding.close_date = new_trade.trade_date
             holding.deleted_at = new_trade.trade_date
-            # When closed, set average_cost to the trade's price.
             holding.average_cost = new_trade.price_per_unit
 
         db.session.add(holding)
@@ -123,7 +108,7 @@ def get_holding_period(holding):
 def get_profit(holding):
     """
     Computes profit as (latest_trade_price - average_cost) * net_quantity.
-    For short positions (net_quantity negative) this calculation should reflect profit/loss appropriately.
+    For short positions (net_quantity negative) this calculation reflects profit/loss appropriately.
     """
     return (holding.latest_trade_price - holding.average_cost) * holding.net_quantity
 
@@ -134,5 +119,126 @@ def get_profit_percentage(holding):
     Returns None if net_cost is zero.
     """
     if holding.net_cost:
-        return ((get_profit(holding)) / abs(holding.net_cost)) * 100
+        return (get_profit(holding) / abs(holding.net_cost)) * 100
     return None
+
+
+def recalc_unrealized_holding(holding):
+    """
+    Recalculate the unrealized holding based on all trades associated with it.
+
+    This function queries all trades linked to the holding (via holding_id) and recomputes:
+      - net_quantity
+      - net_cost
+      - weighted average_cost (based on buy trades)
+      - latest_trade_price, open_date, and if applicable, close_date and deleted_at.
+
+    If no trades remain for this holding, the holding is removed.
+    """
+    trades = (
+        Trade.query.filter_by(holding_id=holding.id).order_by(Trade.trade_date).all()
+    )
+    if not trades:
+        db.session.delete(holding)
+        db.session.flush()
+        return None
+
+    net_quantity = 0
+    net_cost = 0
+    total_buy_quantity = 0
+    total_buy_cost = 0
+    open_date = trades[0].trade_date
+    latest_trade_date = trades[-1].trade_date
+
+    for trade in trades:
+        effective_quantity = trade.quantity
+        if trade.transaction_type.lower() == "sell":
+            effective_quantity = -abs(trade.quantity)
+        net_quantity += effective_quantity
+        trade_value = effective_quantity * trade.price_per_unit
+        net_cost += trade_value
+        if trade.transaction_type.lower() == "buy":
+            total_buy_quantity += trade.quantity
+            total_buy_cost += trade.quantity * trade.price_per_unit
+
+    average_cost = (
+        (total_buy_cost / total_buy_quantity)
+        if total_buy_quantity > 0
+        else trades[-1].price_per_unit
+    )
+
+    holding.net_quantity = net_quantity
+    holding.net_cost = net_cost
+    holding.average_cost = average_cost
+    holding.latest_trade_price = trades[-1].price_per_unit
+    holding.open_date = open_date
+
+    if net_quantity == 0:
+        holding.close_date = latest_trade_date
+        holding.deleted_at = latest_trade_date
+    else:
+        holding.close_date = None
+        holding.deleted_at = None
+
+    db.session.add(holding)
+    db.session.flush()
+    return holding
+
+
+def update_existing_trade(updated_trade):
+    """
+    Update an existing trade and recalculate its associated unrealized holding.
+
+    This function fetches the original trade from the database, updates its details,
+    and then recalculates the holding based on all trades linked to it.
+    """
+    trade = Trade.query.get(updated_trade.id)
+    if not trade:
+        log.error(f"Trade {updated_trade.id} not found for update.")
+        return None
+
+    # Update trade fields (assuming these fields are allowed to be updated).
+    trade.quantity = updated_trade.quantity
+    trade.price_per_unit = updated_trade.price_per_unit
+    trade.trade_date = updated_trade.trade_date
+    trade.transaction_type = updated_trade.transaction_type
+    trade.ticker = updated_trade.ticker
+    trade.source = updated_trade.source
+    trade.trade_type = updated_trade.trade_type
+
+    db.session.add(trade)
+    db.session.flush()
+
+    # Recalculate the associated holding.
+    holding = UnrealizedHolding.query.get(trade.holding_id)
+    if holding:
+        recalc_unrealized_holding(holding)
+
+    db.session.commit()
+    log.debug(f"Updated trade {trade.id} and recalculated holding {trade.holding_id}.")
+    return trade
+
+
+def delete_trade(trade_to_delete):
+    """
+    Delete a trade and update its associated unrealized holding.
+
+    After deletion, the function recalculates the holding based on the remaining trades.
+    If no trades remain, the holding is removed.
+    """
+    trade = Trade.query.get(trade_to_delete.id)
+    if not trade:
+        log.error(f"Trade {trade_to_delete.id} not found for deletion.")
+        return None
+
+    holding_id = trade.holding_id
+    db.session.delete(trade)
+    db.session.flush()
+
+    holding = UnrealizedHolding.query.get(holding_id)
+    if holding:
+        recalc_unrealized_holding(holding)
+
+    db.session.commit()
+    log.debug(f"Deleted trade {trade_to_delete.id} and updated holding {holding_id}.")
+    return holding
