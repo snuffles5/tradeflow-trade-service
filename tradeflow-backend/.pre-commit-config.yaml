@@ -28,7 +28,6 @@ repos:
     rev: v3.4.0
     hooks:
       - id: pyupgrade
-        args: ['--py310-plus']
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.26.3  # Use the latest version of yamllint
     hooks:

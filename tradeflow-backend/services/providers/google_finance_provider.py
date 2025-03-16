@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from typing import Optional
 
 import requests
 from app.models import Stock
@@ -42,7 +43,7 @@ class GoogleFinanceProvider(BaseFinanceProvider):
             log.warning(f"Invalid price format: {price_text}")
             return None
 
-    def _parse_previous_close(self, soup: BeautifulSoup) -> float | None:
+    def _parse_previous_close(self, soup: BeautifulSoup) -> Optional[float]:
         """
         Private helper that searches the page for the "Previous close" field and returns its price.
         Example snippet:
