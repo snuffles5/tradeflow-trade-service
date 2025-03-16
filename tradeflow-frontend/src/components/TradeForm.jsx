@@ -61,7 +61,7 @@ function TradeForm() {
             tradeType: formData.type,
             source: formData.source,
             transactionType: formData.transactionType,
-            ticker: formData.ticker,
+            ticker: formData.ticker.toUpperCase(),
             quantity: parseFloat(formData.quantity),
             pricePerUnit: parseFloat(formData.pricePerUnit),
             tradeDate: dateToUse,

@@ -73,11 +73,12 @@ def create_trade():
     try:
         # Convert incoming JSON keys from camelCase to snake_case.
         converted_data = dict_keys_to_snake(request.json)
+        converted_data["ticker"] = converted_data["ticker"].upper()
         # Load the data; post_load returns a Trade instance.
         loaded_trade = trade_schema.load(converted_data)
         log.info(f"Loaded trade: {loaded_trade}")
     except Exception as e:
-        current_app.logger.error(f"Schema validation failed: {str(e)}")
+        current_app.logger.error(f"Validation failed: {str(e)}")
         return jsonify({"error": str(e)}), 400
 
     # Use property access since loaded_trade is already a Trade instance.
