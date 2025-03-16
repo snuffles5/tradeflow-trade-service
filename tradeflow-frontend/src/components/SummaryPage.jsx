@@ -33,120 +33,6 @@ const formatNumber = (num, decimals = 2, locale = "en-US") =>
         maximumFractionDigits: decimals,
     });
 
-// Define a central columns' configuration. Notice you can add formatting and styling.
-const columns = [
-    {
-        key: "ticker",
-        label: "Ticker",
-        alwaysVisible: true,
-        defaultVisible: true,
-    },
-    {
-        key: "tradeSource",
-        label: "Trade Source",
-        defaultVisible: true,
-        format: (row) => `${row.source}${row.tradeType ? ` (${row.tradeType})` : ""}`,
-    },
-    {
-        key: "netQuantity",
-        label: "Net Quantity",
-        defaultVisible: false,
-    },
-    {
-        key: "netCost",
-        label: "Net Cost",
-        defaultVisible: true,
-        format: (row) => `$${formatNumber(row.netCost)}`,
-    },
-    {
-        key: "latestTradePrice",
-        label: "Latest Trade Price",
-        defaultVisible: true,
-        format: (row) => (row.latestTradePrice ? `$${formatNumber(row.latestTradePrice)}` : "N/A"),
-    },
-    {
-    key: "currentMarketValue",
-    label: "Current Market Value",
-    defaultVisible: true,
-    format: (row) =>
-        row.netQuantity != null && row.currentPrice != null
-            ? `$${formatNumber(row.netQuantity * row.currentPrice)}`
-            : <span style={{color: "lightgray"}}>N/A</span>,
-    },
-    {
-        key: "currentPrice",
-        label: "Current Price",
-        defaultVisible: false,
-        format: (row) =>
-            row.updating ?
-                <CircularProgress size={16}/> : row.currentPrice != null ? `$${formatNumber(row.currentPrice)}` :
-                    <span style={{color: "lightgray"}}>N/A</span>,
-    },
-    {
-        key: "profit",
-        label: "Profit",
-        defaultVisible: true,
-        format: (row) =>
-            row.updating ? (
-                <CircularProgress size={16}/>
-            ) : row.profit != null ? (
-                <span style={{color: row.profit >= 0 ? "green" : "red"}}>${formatNumber(row.profit)}</span>
-            ) : (
-                <span style={{color: "lightgray"}}>N/A</span>
-            ),
-    },
-    {
-        key: "profitPercentage",
-        label: "Profit (%)",
-        defaultVisible: true,
-        format: (row) =>
-            row.updating ? (
-                <CircularProgress size={16}/>
-            ) : row.profitPercentage != null ? (
-                <span style={{color: row.profitPercentage >= 0 ? "green" : "red"}}>
-          {formatNumber(row.profitPercentage)}%
-        </span>
-            ) : (
-                <span style={{color: "lightgray"}}>N/A</span>
-            ),
-        footer: () => "", // Customize footer cell if needed
-    },
-    {
-        key: "changeToday",
-        label: "Change Today",
-        defaultVisible: true,
-        format: (row) =>
-            row.changeToday != null ? (
-                <span style={{color: row.changeToday >= 0 ? "green" : "red"}}>${formatNumber(row.changeToday)}</span>
-            ) : (
-                <span style={{color: "lightgray"}}>N/A</span>
-            ),
-    },
-    {
-        key: "changeTodayPercentage",
-        label: "Change Today (%)",
-        defaultVisible: true,
-        format: (row) =>
-            row.changeTodayPercentage != null ? (
-                <span style={{color: row.changeTodayPercentage >= 0 ? "green" : "red"}}>
-          {formatNumber(row.changeTodayPercentage)}%
-        </span>
-            ) : (
-                <span style={{color: "lightgray"}}>N/A</span>
-            ),
-    },
-    {
-        key: "holdingPeriod",
-        label: "Holding Period (days)",
-        defaultVisible: false,
-    },
-    {
-        key: "tradeCount",
-        label: "Trade Count",
-        defaultVisible: false,
-        format: (row) => (row.tradeCount !== undefined ? Number(row.tradeCount).toLocaleString() : "N/A"),
-    },
-];
 
 // Custom hook to handle sorting logic
 const useSortableData = (items, initialConfig = {key: "netQuantity", direction: "desc"}) => {
@@ -195,6 +81,137 @@ function SummaryPage() {
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const [highlightSignificant, setHighlightSignificant] = useState(true);
+
+    const colors = {
+        text: darkMode ? "white" : "black",
+        background: darkMode ? "#333" : "white",
+        border: darkMode ? "white" : "black",
+        positive: darkMode ? "#90ee90" : "green",
+        negative: darkMode ? "#ff7f7f" : "red",
+        highlight: darkMode ? "#555" : "#f0f0f0",  // New highlight background color
+
+    };
+
+    // Define a central columns' configuration. Notice you can add formatting and styling.
+    const columns = [
+        {
+            key: "ticker",
+            label: "Ticker",
+            alwaysVisible: true,
+            defaultVisible: true,
+        },
+        {
+            key: "tradeSource",
+            label: "Trade Source",
+            defaultVisible: true,
+            format: (row) => `${row.source}${row.tradeType ? ` (${row.tradeType})` : ""}`,
+        },
+        {
+            key: "netQuantity",
+            label: "Net Quantity",
+            defaultVisible: false,
+        },
+        {
+            key: "netCost",
+            label: "Net Cost",
+            defaultVisible: true,
+            format: (row) => `$${formatNumber(row.netCost)}`,
+        },
+        {
+            key: "latestTradePrice",
+            label: "Latest Trade Price",
+            defaultVisible: true,
+            format: (row) => (row.latestTradePrice ? `$${formatNumber(row.latestTradePrice)}` : "N/A"),
+        },
+        {
+            key: "currentMarketValue",
+            label: "Current Market Value",
+            defaultVisible: true,
+            format: (row) =>
+                row.netQuantity != null && row.currentPrice != null
+                    ? `$${formatNumber(row.netQuantity * row.currentPrice)}`
+                    : <span style={{color: "lightgray"}}>N/A</span>,
+        },
+        {
+            key: "currentPrice",
+            label: "Current Price",
+            defaultVisible: false,
+            format: (row) =>
+                row.updating ?
+                    <CircularProgress size={16}/> : row.currentPrice != null ? `$${formatNumber(row.currentPrice)}` :
+                        <span style={{color: "lightgray"}}>N/A</span>,
+        },
+        {
+            key: "profit",
+            label: "Profit",
+            defaultVisible: true,
+            format: (row) =>
+                row.updating ? (
+                    <CircularProgress size={16}/>
+                ) : row.profit != null ? (
+                    <span style={{color: row.profit >= 0 ? colors.positive : colors.negative}}>
+                ${formatNumber(row.profit)}
+            </span>
+                ) : (
+                    <span style={{color: "lightgray"}}>N/A</span>
+                ),
+        },
+        {
+            key: "profitPercentage",
+            label: "Profit (%)",
+            defaultVisible: true,
+            format: (row) =>
+                row.updating ? (
+                    <CircularProgress size={16}/>
+                ) : row.profitPercentage != null ? (
+                    <span style={{color: row.profitPercentage >= 0 ? colors.positive : colors.negative}}>
+                {formatNumber(row.profitPercentage)}%
+            </span>
+                ) : (
+                    <span style={{color: "lightgray"}}>N/A</span>
+                ),
+            footer: () => "",
+        },
+        {
+            key: "changeToday",
+            label: "Change Today",
+            defaultVisible: true,
+            format: (row) =>
+                row.changeToday != null ? (
+                    <span style={{color: row.changeToday >= 0 ? colors.positive : colors.negative}}>
+                ${formatNumber(row.changeToday)}
+            </span>
+                ) : (
+                    <span style={{color: "lightgray"}}>N/A</span>
+                ),
+        },
+        {
+            key: "changeTodayPercentage",
+            label: "Change Today (%)",
+            defaultVisible: true,
+            format: (row) =>
+                row.changeTodayPercentage != null ? (
+                    <span style={{color: row.changeTodayPercentage >= 0 ? colors.positive : colors.negative}}>
+                {formatNumber(row.changeTodayPercentage)}%
+            </span>
+                ) : (
+                    <span style={{color: "lightgray"}}>N/A</span>
+                ),
+        },
+
+        {
+            key: "holdingPeriod",
+            label: "Holding Period (days)",
+            defaultVisible: false,
+        },
+        {
+            key: "tradeCount",
+            label: "Trade Count",
+            defaultVisible: false,
+            format: (row) => (row.tradeCount !== undefined ? Number(row.tradeCount).toLocaleString() : "N/A"),
+        },
+    ];
+
 
     // Control which columns are visible. New columns only need to be added to the columns array.
     const [visibleColumns, setVisibleColumns] = useState(
@@ -367,8 +384,8 @@ function SummaryPage() {
                 maxWidth="lg"
                 sx={{
                     mt: 4,
-                    backgroundColor: darkMode ? "#333" : "inherit",
-                    color: darkMode ? "white" : "inherit",
+                    backgroundColor: colors.background,
+                    color: colors.text,
                 }}
             >
                 <Typography variant="h4" gutterBottom>
@@ -383,8 +400,8 @@ function SummaryPage() {
                         sx={{
                             p: 2,
                             mb: 2,
-                            backgroundColor: darkMode ? "#333" : "white",
-                            color: darkMode ? "white" : "inherit",
+                            backgroundColor: colors.background,
+                            color: colors.text,
                         }}
                     >
                         <Typography variant="h6">Overall Metrics</Typography>
@@ -423,6 +440,7 @@ function SummaryPage() {
                         <InputLabel id="columns-select-label" sx={{color: darkMode ? "white" : "inherit"}}>
                             Columns
                         </InputLabel>
+                        {/* Columns selection dropdown */}
                         <Select
                             multiple
                             value={Object.keys(visibleColumns).filter((key) => visibleColumns[key])}
@@ -441,10 +459,25 @@ function SummaryPage() {
                                         .join(", ")}...`
                                     : selected.map((key) => columns.find((col) => col.key === key)?.label).join(", ")
                             }
+                            sx={{
+                                color: darkMode ? "white" : "black",
+                                "& .MuiOutlinedInput-notchedOutline": {
+                                    borderColor: darkMode ? "white" : "black",
+                                },
+                            }}
+                            MenuProps={{
+                                PaperProps: {
+                                    sx: {
+                                        backgroundColor: darkMode ? "#333" : "white",
+                                        color: darkMode ? "white" : "black",
+                                    },
+                                },
+                            }}
                         >
                             {columns.map((col) => (
                                 <MenuItem key={col.key} value={col.key}>
-                                    <Checkbox checked={visibleColumns[col.key]} disabled={col.alwaysVisible}/>
+                                    <Checkbox checked={visibleColumns[col.key]} disabled={col.alwaysVisible}
+                                              sx={{color: colors.text}}/>
                                     <ListItemText primary={col.label}/>
                                 </MenuItem>
                             ))}
@@ -528,7 +561,7 @@ function SummaryPage() {
                                     {columns
                                         .filter((col) => visibleColumns[col.key])
                                         .map((col) => (
-                                            <TableCell key={col.key}>
+                                            <TableCell key={col.key} sx={{color: colors.text}}>
                                                 <TableSortLabel
                                                     active={sortConfig.key === col.key}
                                                     direction={sortConfig.key === col.key ? sortConfig.direction : "asc"}
@@ -542,11 +575,18 @@ function SummaryPage() {
                             </TableHead>
                             <TableBody>
                                 {filteredData.map((row) => (
-                                    <TableRow key={row.id}>
+                                    <TableRow
+                                        key={row.id}
+                                        sx={
+                                            highlightSignificant && Math.abs(row.changeTodayPercentage || 0) >= 5
+                                                ? {backgroundColor: colors.highlight, "& td": {color: colors.text}}
+                                                : {"& td": {color: colors.text}}
+                                        }
+                                    >
                                         {columns
                                             .filter((col) => visibleColumns[col.key])
                                             .map((col) => (
-                                                <TableCell key={col.key}>
+                                                <TableCell key={col.key} sx={{color: colors.text}}>
                                                     {col.format ? col.format(row) : row[col.key]}
                                                 </TableCell>
                                             ))}
@@ -556,7 +596,7 @@ function SummaryPage() {
                             <TableFooter>
                                 <TableRow sx={{borderTop: "3px solid", borderColor: "divider"}}>
                                     {columns.map((col) => (
-                                        <TableCell key={col.key}>
+                                        <TableCell key={col.key} sx={{color: colors.text}}>
                                             {/* For totals, you can customize based on the column key */}
                                             {col.key === "netQuantity"
                                                 ? totals.netQuantity === 0
