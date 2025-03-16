@@ -65,9 +65,18 @@ const columns = [
         format: (row) => (row.latestTradePrice ? `$${formatNumber(row.latestTradePrice)}` : "N/A"),
     },
     {
+    key: "currentMarketValue",
+    label: "Current Market Value",
+    defaultVisible: true,
+    format: (row) =>
+        row.netQuantity != null && row.currentPrice != null
+            ? `$${formatNumber(row.netQuantity * row.currentPrice)}`
+            : <span style={{color: "lightgray"}}>N/A</span>,
+    },
+    {
         key: "currentPrice",
         label: "Current Price",
-        defaultVisible: true,
+        defaultVisible: false,
         format: (row) =>
             row.updating ?
                 <CircularProgress size={16}/> : row.currentPrice != null ? `$${formatNumber(row.currentPrice)}` :
@@ -317,9 +326,13 @@ function SummaryPage() {
                     acc.netCost += Number(holding.netCost) || 0;
                     acc.profit += holding.profit != null ? Number(holding.profit) : 0;
                     acc.tradeCount += Number(holding.tradeCount) || 0;
+                    acc.currentMarketValue +=
+                        holding.netQuantity != null && holding.currentPrice != null
+                            ? holding.netQuantity * holding.currentPrice
+                            : 0;
                     return acc;
                 },
-                {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0}
+                {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0}
             ),
         [filteredData]
     );
