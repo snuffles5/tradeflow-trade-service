@@ -352,7 +352,7 @@ function SummaryPage() {
     // Calculate totals.
     const totals = useMemo(
         () =>
-            metricsData.reduce(
+            filteredData.reduce(
                 (acc, holding) => {
                     acc.netQuantity += Number(holding.netQuantity) || 0;
                     acc.netCost += Number(holding.netCost) || 0;
@@ -364,13 +364,13 @@ function SummaryPage() {
                             : 0;
                     return acc;
                 },
-                {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0}
+                { netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0 }
             ),
-        [metricsData]
+        [filteredData]
     );
 
     const localProfitPercentage = totals.netCost !== 0 ? (totals.profit / totals.netCost) * 100 : null;
-    const localChangeToday = metricsData.reduce((sum, holding) => sum + (holding.changeToday || 0), 0);
+    const localChangeToday = filteredData.reduce((sum, holding) => sum + (holding.changeToday || 0), 0);
     const localChangeTodayPercentage = totals.netCost !== 0 ? (localChangeToday / totals.netCost) * 100 : null;
 
 
@@ -414,9 +414,9 @@ function SummaryPage() {
 
                 {/* Aggregated Metrics */}
                 {aggLoading ? (
-                    <CircularProgress />
+                    <CircularProgress/>
                 ) : aggregateData ? (
-                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                    <Box sx={{display: "flex", gap: 2, flexWrap: "wrap"}}>
                         <Paper
                             sx={{
                                 p: 2,
@@ -432,13 +432,16 @@ function SummaryPage() {
                                 Total Net Cash: ${formatNumber(aggregateData.overall?.totalNetCost || 0)}
                             </Typography>
                             <Typography variant="body1">
-                                Net Cash (Personal Interactive): ${formatNumber(aggregateData.netCash?.netCashPersonalInteractive || 0)}
+                                Net Cash (Personal Interactive):
+                                ${formatNumber(aggregateData.netCash?.netCashPersonalInteractive || 0)}
                             </Typography>
                             <Typography variant="body1">
-                                Net Cash (Personal One Zero): ${formatNumber(aggregateData.netCash?.netCashPersonalOneZero || 0)}
+                                Net Cash (Personal One Zero):
+                                ${formatNumber(aggregateData.netCash?.netCashPersonalOneZero || 0)}
                             </Typography>
                             <Typography variant="body1">
-                                Net Cash (Joint Interactive): ${formatNumber(aggregateData.netCash?.netCashJointInteractive || 0)}
+                                Net Cash (Joint Interactive):
+                                ${formatNumber(aggregateData.netCash?.netCashJointInteractive || 0)}
                             </Typography>
                         </Paper>
                         <Paper
@@ -642,29 +645,34 @@ function SummaryPage() {
                                 ))}
                             </TableBody>
                             <TableFooter>
-                                <TableRow sx={{borderTop: `3px solid ${colors.border}`}}>
-                                    {columns.map((col) => (
-                                        <TableCell key={col.key} sx={{color: colors.text}}>
-                                            {col.key === "netQuantity"
-                                                ? totals.netQuantity === 0
-                                                    ? "Closed"
-                                                    : Number(totals.netQuantity).toLocaleString()
-                                                : col.key === "netCost"
-                                                    ? `$${formatNumber(totals.netCost)}`
-                                                    : col.key === "profit"
-                                                        ? (
-                                                            <span
-                                                                style={{color: totals.profit >= 0 ? colors.positive : colors.negative}}>
-                            ${formatNumber(totals.profit)}
-                          </span>
-                                                        )
-                                                        : col.key === "tradeCount"
-                                                            ? Number(totals.tradeCount).toLocaleString()
-                                                            : ""}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
+                              <TableRow sx={{ borderTop: `3px solid ${colors.border}` }}>
+                                {columns.filter((col) => visibleColumns[col.key]).map((col, index) => {
+                                  let cellContent = "";
+                                  if (col.key === "netCost") {
+                                    cellContent = `$${formatNumber(totals.netCost)}`;
+                                  } else if (col.key === "currentMarketValue") {
+                                    cellContent = `$${formatNumber(totals.currentMarketValue)}`;
+                                  } else if (col.key === "profit") {
+                                    cellContent = (
+                                      <span style={{ color: totals.profit >= 0 ? colors.positive : colors.negative }}>
+                                        ${formatNumber(totals.profit)}
+                                      </span>
+                                    );
+                                  } else if (col.key === "changeToday") {
+                                    cellContent = `$${formatNumber(localChangeToday)}`;
+                                  } else if (index === 0) {
+                                    // For the first visible column that isn't one of the totals columns, display a title.
+                                    cellContent = "Total:";
+                                  }
+                                  return (
+                                    <TableCell key={col.key} sx={{ color: colors.text, fontWeight: "bold" }}>
+                                      {cellContent}
+                                    </TableCell>
+                                  );
+                                })}
+                              </TableRow>
                             </TableFooter>
+
                         </Table>
                     </TableContainer>
                 )}
