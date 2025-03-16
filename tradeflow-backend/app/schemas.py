@@ -1,7 +1,10 @@
 # app/schemas.py
+from datetime import datetime
+
 from marshmallow import Schema, fields, post_load
 
 from app.models import Trade, LastPriceInfo, UnrealizedHolding
+from utils.logger import log
 
 
 class TradeSchema(Schema):
@@ -12,13 +15,14 @@ class TradeSchema(Schema):
     ticker = fields.Str(required=True)
     quantity = fields.Float(required=True)
     price_per_unit = fields.Float(required=True)
-    trade_date = fields.DateTime(required=True)  # using trade_date instead of date
+    trade_date = fields.DateTime(format="%Y-%m-%d", missing=lambda: datetime.utcnow())  # Default to current UTC time
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
     holding_id = fields.Int(allow_none=True)  # new foreign key
 
     @post_load
-    def make_trade(self, data):
+    def make_trade(self, data, **kwargs):
+        log.trace(f"Making trade with data: {data}, kwargs: {kwargs}")
         return Trade(**data)
 
 
