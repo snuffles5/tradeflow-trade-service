@@ -219,10 +219,21 @@ def holdings_summary():
         holdings = UnrealizedHolding.query.all()
         total_net_cost = 0
         total_profit = 0
+        net_cash_personal_interactive = 0
+        net_cash_personal_one_zero = 0
+        net_cash_joint_interactive = 0
 
         for h in holdings:
             net_quantity = h.net_quantity
             cost_basis = h.net_cost
+
+            if h.trade_type == "personal" and h.source.lower() == "interactive":
+                net_cash_personal_interactive += cost_basis
+            if h.trade_type == "personal one zero":
+                net_cash_personal_one_zero += cost_basis
+            if h.trade_type == "joint" and h.source.lower() == "interactive":
+                net_cash_joint_interactive += cost_basis
+
             # Example profit calculation for an open position
             # (closed holdings might have close_date set, or net_quantity=0)
             if net_quantity != 0:
@@ -235,9 +246,18 @@ def holdings_summary():
             total_profit += profit
 
         summary = {
-            "total_net_cost": round(total_net_cost, 2),
-            "total_profit": round(total_profit, 2),
+            "overall": {
+                "total_net_cost": round(total_net_cost, 2),
+            },
+            "net_cash": {
+                "net_cash_personal_interactive": round(
+                    net_cash_personal_interactive, 2
+                ),
+                "net_cash_personal_one_zero": round(net_cash_personal_one_zero, 2),
+                "net_cash_joint_interactive": round(net_cash_joint_interactive, 2),
+            },
         }
+
         return jsonify(dict_keys_to_camel(summary)), 200
 
 
