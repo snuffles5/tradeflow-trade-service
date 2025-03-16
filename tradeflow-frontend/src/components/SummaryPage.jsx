@@ -337,20 +337,8 @@ function SummaryPage() {
         });
     }, [sortedData, search, includeClosed]);
 
-    const metricsData = useMemo(() => {
-        const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
-        return sortedData.filter((holding) => {
-            const tradeSourceValue = `${holding.source} ${holding.tradeType || ""}`.toLowerCase();
-            return searchTerms.every(
-                (term) =>
-                    holding.ticker.toLowerCase().includes(term) || tradeSourceValue.includes(term)
-            );
-        });
-    }, [sortedData, search]);
-
-
     // Calculate totals.
-    const totals = useMemo(
+    const filteredTotals = useMemo(
         () =>
             filteredData.reduce(
                 (acc, holding) => {
@@ -364,14 +352,41 @@ function SummaryPage() {
                             : 0;
                     return acc;
                 },
-                { netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0 }
+                {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0}
             ),
         [filteredData]
     );
 
-    const localProfitPercentage = totals.netCost !== 0 ? (totals.profit / totals.netCost) * 100 : null;
-    const localChangeToday = filteredData.reduce((sum, holding) => sum + (holding.changeToday || 0), 0);
-    const localChangeTodayPercentage = totals.netCost !== 0 ? (localChangeToday / totals.netCost) * 100 : null;
+// Calculate totals using the full sortedData array rather than filteredData.
+    const overallTotals = useMemo(
+        () =>
+            sortedData.reduce(
+                (acc, holding) => {
+                    acc.netQuantity += Number(holding.netQuantity) || 0;
+                    acc.netCost += Number(holding.netCost) || 0;
+                    acc.profit += holding.profit != null ? Number(holding.profit) : 0;
+                    acc.tradeCount += Number(holding.tradeCount) || 0;
+                    acc.currentMarketValue +=
+                        holding.netQuantity != null && holding.currentPrice != null
+                            ? holding.netQuantity * holding.currentPrice
+                            : 0;
+                    return acc;
+                },
+                {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0}
+            ),
+        [sortedData]
+    );
+
+    const localProfitPercentage =
+        overallTotals.netCost !== 0 ? (overallTotals.profit / overallTotals.netCost) * 100 : null;
+    const localProfit =
+        overallTotals.netCost !== 0 ? overallTotals.profit : null;
+    const localChangeToday = sortedData.reduce(
+        (sum, holding) => sum + (holding.changeToday || 0),
+        0
+    );
+    const localChangeTodayPercentage =
+        overallTotals.netCost !== 0 ? (localChangeToday / overallTotals.netCost) * 100 : null;
 
 
     // Export the table to PDF.
@@ -454,23 +469,47 @@ function SummaryPage() {
                                 minWidth: 250,
                             }}
                         >
-                            <Typography variant="h6">Overall Metrics</Typography>
+                            <Typography variant="h6">Calculated Performance Metrics</Typography>
                             <Typography variant="body1">
                                 Total Profit Percentage:{" "}
-                                {localProfitPercentage != null
-                                    ? `${formatNumber(localProfitPercentage)}%`
-                                    : "N/A"}
+                                {localProfitPercentage != null ? (
+                                    <span
+                                        style={{color: localProfitPercentage >= 0 ? colors.positive : colors.negative}}>
+                                        {formatNumber(localProfitPercentage)}%
+                                    </span>
+                                ) : (
+                                    "N/A"
+                                )}
                             </Typography>
                             <Typography variant="body1">
-                                Change Today: ${formatNumber(localChangeToday)}
+                                Total Profit:{" "}
+                                {localProfit != null ? (
+                                    <span style={{color: localProfit >= 0 ? colors.positive : colors.negative}}>
+                                ${formatNumber(localProfit)}
+                              </span>
+                                ) : (
+                                    "N/A"
+                                )}
+                            </Typography>
+                            <Typography variant="body1">
+                                Change Today:{" "}
+                                <span style={{color: localChangeToday >= 0 ? colors.positive : colors.negative}}>
+                                    ${formatNumber(localChangeToday)}
+                                </span>
                             </Typography>
                             <Typography variant="body1">
                                 Change Today Percentage:{" "}
-                                {localChangeTodayPercentage != null
-                                    ? `${formatNumber(localChangeTodayPercentage)}%`
-                                    : "N/A"}
+                                {localChangeTodayPercentage != null ? (
+                                    <span
+                                        style={{color: localChangeTodayPercentage >= 0 ? colors.positive : colors.negative}}>
+                                        {formatNumber(localChangeTodayPercentage)}%
+                                    </span>
+                                ) : (
+                                    "N/A"
+                                )}
                             </Typography>
                         </Paper>
+
                     </Box>
                 ) : null}
 
@@ -645,32 +684,33 @@ function SummaryPage() {
                                 ))}
                             </TableBody>
                             <TableFooter>
-                              <TableRow sx={{ borderTop: `3px solid ${colors.border}` }}>
-                                {columns.filter((col) => visibleColumns[col.key]).map((col, index) => {
-                                  let cellContent = "";
-                                  if (col.key === "netCost") {
-                                    cellContent = `$${formatNumber(totals.netCost)}`;
-                                  } else if (col.key === "currentMarketValue") {
-                                    cellContent = `$${formatNumber(totals.currentMarketValue)}`;
-                                  } else if (col.key === "profit") {
-                                    cellContent = (
-                                      <span style={{ color: totals.profit >= 0 ? colors.positive : colors.negative }}>
-                                        ${formatNumber(totals.profit)}
+                                <TableRow sx={{borderTop: `3px solid ${colors.border}`}}>
+                                    {columns.filter((col) => visibleColumns[col.key]).map((col, index) => {
+                                        let cellContent = "";
+                                        if (col.key === "netCost") {
+                                            cellContent = `$${formatNumber(filteredTotals.netCost)}`;
+                                        } else if (col.key === "currentMarketValue") {
+                                            cellContent = `$${formatNumber(filteredTotals.currentMarketValue)}`;
+                                        } else if (col.key === "profit") {
+                                            cellContent = (
+                                                <span
+                                                    style={{color: filteredTotals.profit >= 0 ? colors.positive : colors.negative}}>
+                                        ${formatNumber(filteredTotals.profit)}
                                       </span>
-                                    );
-                                  } else if (col.key === "changeToday") {
-                                    cellContent = `$${formatNumber(localChangeToday)}`;
-                                  } else if (index === 0) {
-                                    // For the first visible column that isn't one of the totals columns, display a title.
-                                    cellContent = "Total:";
-                                  }
-                                  return (
-                                    <TableCell key={col.key} sx={{ color: colors.text, fontWeight: "bold" }}>
-                                      {cellContent}
-                                    </TableCell>
-                                  );
-                                })}
-                              </TableRow>
+                                            );
+                                        } else if (col.key === "changeToday") {
+                                            cellContent = `$${formatNumber(localChangeToday)}`;
+                                        } else if (index === 0) {
+                                            // For the first visible column that isn't one of the totals columns, display a title.
+                                            cellContent = "Total:";
+                                        }
+                                        return (
+                                            <TableCell key={col.key} sx={{color: colors.text, fontWeight: "bold"}}>
+                                                {cellContent}
+                                            </TableCell>
+                                        );
+                                    })}
+                                </TableRow>
                             </TableFooter>
 
                         </Table>

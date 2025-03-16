@@ -106,3 +106,13 @@ class Stock:
     change_today: float
     change_today_percentage: float
     last_updated: datetime
+
+
+class TradeSource:
+    interactive_brokers = "Interactive IL"
+    one_zero = "One Zero"
+
+
+class TradeType:
+    personal = "Personal"
+    joint = "Joint"

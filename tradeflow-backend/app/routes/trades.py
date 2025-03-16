@@ -3,6 +3,8 @@ import os
 
 from app.database import db
 from app.models import Trade
+from app.models import TradeSource
+from app.models import TradeType
 from app.models import UnrealizedHolding
 from app.schemas import TradeSchema
 from flask import Blueprint
@@ -227,11 +229,17 @@ def holdings_summary():
             net_quantity = h.net_quantity
             cost_basis = h.net_cost
 
-            if h.trade_type == "personal" and h.source.lower() == "interactive":
+            if (
+                h.trade_type == TradeType.personal
+                and h.source == TradeSource.interactive_brokers
+            ):
                 net_cash_personal_interactive += cost_basis
-            if h.trade_type == "personal one zero":
+            if h.trade_type == TradeType.personal and h.source == TradeSource.one_zero:
                 net_cash_personal_one_zero += cost_basis
-            if h.trade_type == "joint" and h.source.lower() == "interactive":
+            if (
+                h.trade_type == TradeType.joint
+                and h.source == TradeSource.interactive_brokers
+            ):
                 net_cash_joint_interactive += cost_basis
 
             # Example profit calculation for an open position
