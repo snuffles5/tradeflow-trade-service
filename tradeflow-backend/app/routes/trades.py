@@ -5,12 +5,16 @@ from app.database import db
 from app.models import Trade
 from app.models import TradeSource
 from app.models import TradeType
-from app.models import UnrealizedHolding
 from app.schemas import TradeSchema
+from exceptions import HoldingRetrievalError
 from flask import Blueprint
 from flask import current_app
 from flask import jsonify
 from flask import request
+from services.db_queries import get_active_trades
+from services.db_queries import get_all_holdings
+from services.db_queries import get_trade_by_id
+from services.db_queries import get_trades_by_holding_id
 from services.providers.factory import ProviderFactory
 from services.trade_holdings import get_holding_period
 from services.trade_holdings import process_new_trade
@@ -118,7 +122,12 @@ def list_trades():
     Returns a list of all trades in the database.
     """
     with current_app.app_context():
-        trades = Trade.query.all()
+        response = get_active_trades()
+        if not response.success:
+            current_app.logger.error(response.error_message)
+            return jsonify({"error": response.error_message}), response.code
+        trades = response.data
+
         results = []
         for t in trades:
             results.append(
@@ -148,14 +157,19 @@ def list_holdings():
     if you only want open positions.
     """
     with current_app.app_context():
-        holdings = UnrealizedHolding.query.all()
+        response = get_all_holdings()
+        if not response.success:
+            raise HoldingRetrievalError(response.error_message)
+        holdings = response.data
         results = []
         for h in holdings:
-            holding_trades = (
-                Trade.query.filter(Trade.holding_id == h.id)
-                .order_by(Trade.trade_date.asc())
-                .all()
-            )
+            response_trades = get_trades_by_holding_id(h.id)
+            if not response_trades.success:
+                current_app.logger.error(response_trades.error_message)
+                holding_trades = []
+            else:
+                holding_trades = response_trades.data
+
             holding_trade_dicts = [t.to_dict() for t in holding_trades]
 
             profit = sum(
@@ -219,7 +233,10 @@ def holdings_summary():
     Adjust logic as needed for your business rules.
     """
     with current_app.app_context():
-        holdings = UnrealizedHolding.query.all()
+        response = get_all_holdings()
+        if not response.success:
+            raise HoldingRetrievalError(response.error_message)
+        holdings = response.data
         total_net_cost = 0
         total_profit = 0
         net_cash_personal_interactive = 0
@@ -293,3 +310,90 @@ def get_stock_info(ticker):
     except Exception as e:
         current_app.logger.error(f"Error fetching last price for {ticker}: {str(e)}")
         return jsonify({"error": "failed to get last price"}), 500
+
+
+@trades_bp.route("/trades/<int:trade_id>", methods=["PUT"])
+def update_trade(trade_id):
+    """
+    Update an existing trade.
+    Expects JSON payload with fields: ticker, trade_type, source, transaction_type,
+    quantity, price_per_unit, and trade_date.
+    """
+    from services.trade_holdings import update_existing_trade
+    from utils.text_utils import dict_keys_to_snake, dict_keys_to_camel
+
+    data = request.json
+    try:
+        data = dict_keys_to_snake(data)
+    except Exception as e:
+        current_app.logger.error(f"Error converting keys: {str(e)}")
+        return jsonify({"error": "Invalid request payload"}), 400
+
+    response_trade = get_trade_by_id(trade_id)
+    if not response_trade.success:
+        return jsonify({"error": response_trade.error_message}), response_trade.code
+    trade = response_trade.data
+
+    if not trade:
+        return jsonify({"error": "Trade not found"}), 404
+
+    # Update trade fields.
+    try:
+        for field in [
+            "ticker",
+            "trade_type",
+            "source",
+            "transaction_type",
+            "quantity",
+            "price_per_unit",
+            "trade_date",
+        ]:
+            if field in data:
+                setattr(trade, field, data[field])
+        db.session.add(trade)
+        db.session.flush()
+        # Recalculate the holding via the update_existing_trade helper.
+        update_existing_trade(trade)
+        db.session.commit()
+        current_app.logger.info(f"Trade updated with ID: {trade.id}")
+        return (
+            jsonify(
+                dict_keys_to_camel({"message": "Trade updated", "trade_id": trade.id})
+            ),
+            200,
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating trade: {str(e)}")
+        return jsonify({"error": str(e)}), 400
+
+
+@trades_bp.route("/trades/<int:trade_id>", methods=["DELETE"])
+def delete_trade_route(trade_id):
+    """
+    Delete an existing trade and update its associated holding.
+    """
+    from services.trade_holdings import delete_trade
+    from utils.text_utils import dict_keys_to_camel
+
+    response_trade = get_trade_by_id(trade_id)
+    if not response_trade.success:
+        return jsonify({"error": response_trade.error_message}), response_trade.code
+    trade = response_trade.data
+    if not trade:
+        return jsonify({"error": "Trade not found"}), 404
+
+    try:
+        delete_trade(trade)
+        db.session.commit()
+        current_app.logger.info(f"Trade deleted with ID: {trade_id}")
+        return (
+            jsonify(
+                dict_keys_to_camel({"message": "Trade deleted", "trade_id": trade_id})
+            ),
+            200,
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting trade: {str(e)}")
+        return jsonify({"error": str(e)}), 400

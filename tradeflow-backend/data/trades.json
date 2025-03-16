@@ -442,5 +442,17 @@
     "trade_type": "Personal",
     "transaction_type": "Buy",
     "updated_at": "03/15/2025"
+  },
+  {
+    "created_at": "03/16/2025",
+    "holding_id": 97,
+    "price_per_unit": "22.50",
+    "quantity": 6.0,
+    "source": "One Zero",
+    "ticker": "IONQ",
+    "trade_date": "03/12/2025",
+    "trade_type": "Personal",
+    "transaction_type": "Buy",
+    "updated_at": "03/16/2025"
   }
 ]

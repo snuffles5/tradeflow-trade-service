@@ -116,3 +116,8 @@ class TradeSource:
 class TradeType:
     personal = "Personal"
     joint = "Joint"
+
+
+class TradeTransactionType:
+    sell = "Sell"
+    buy = "Buy"
