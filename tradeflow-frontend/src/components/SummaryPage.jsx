@@ -22,7 +22,12 @@ import {
     ListItemText,
     FormControlLabel,
     Button,
+    Drawer,
+    IconButton,
+    Menu,
 } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {jsPDF} from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -76,10 +81,23 @@ function SummaryPage() {
     const [aggLoading, setAggLoading] = useState(true);
     const [priceUpdatesLaunched, setPriceUpdatesLaunched] = useState(false);
     const [search, setSearch] = useState("");
-    const [includeClosed, setIncludeClosed] = useState(false);
+    // Remove includeClosed and use a multi-select for position status instead.
+    const [selectedPositions, setSelectedPositions] = useState(["open", "closed"]);
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const [highlightSignificant, setHighlightSignificant] = useState(true);
+
+    // State for the right settings drawer
+    const [drawerOpen, setDrawerOpen] = useState(false);
+
+    // State for columns filter menu (3-dots)
+    const [columnsMenuAnchor, setColumnsMenuAnchor] = useState(null);
+    const handleColumnsMenuOpen = (event) => {
+        setColumnsMenuAnchor(event.currentTarget);
+    };
+    const handleColumnsMenuClose = () => {
+        setColumnsMenuAnchor(null);
+    };
 
     // Centralized color definitions – all dark/light mode decisions are handled here.
     const colors = {
@@ -154,8 +172,8 @@ function SummaryPage() {
                     <CircularProgress size={16}/>
                 ) : row.profit != null && !Number.isNaN(Number(row.profit)) ? (
                     <span style={{color: row.profit >= 0 ? colors.positive : colors.negative}}>
-                  ${formatNumber(row.profit)}
-                </span>
+            ${formatNumber(row.profit)}
+          </span>
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
@@ -170,7 +188,7 @@ function SummaryPage() {
                 ) : row.profitPercentage != null && !Number.isNaN(Number(row.profitPercentage)) ? (
                     <span style={{color: row.profitPercentage >= 0 ? colors.positive : colors.negative}}>
             {formatNumber(row.profitPercentage)}%
-            </span>
+          </span>
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
@@ -178,7 +196,7 @@ function SummaryPage() {
         },
         {
             key: "changeToday",
-            label: "Change Today",
+            label: "Latest Change",
             defaultVisible: true,
             format: (row) =>
                 row.changeToday != null ? (
@@ -191,7 +209,7 @@ function SummaryPage() {
         },
         {
             key: "changeTodayPercentage",
-            label: "Change Today (%)",
+            label: "Latest Change (%)",
             defaultVisible: true,
             format: (row) =>
                 row.changeTodayPercentage != null ? (
@@ -323,7 +341,7 @@ function SummaryPage() {
     // Apply sorting using our custom hook.
     const {items: sortedData, sortConfig, requestSort} = useSortableData(holdingsData);
 
-    // Filter holdings based on search input and closed status.
+    // Filter holdings based on search input and selected position status.
     const filteredData = useMemo(() => {
         const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
         return sortedData.filter((holding) => {
@@ -332,10 +350,14 @@ function SummaryPage() {
                 (term) =>
                     holding.ticker.toLowerCase().includes(term) || tradeSourceValue.includes(term)
             );
-            const includeHolding = includeClosed ? true : holding.netQuantity !== 0;
+            const isOpen = holding.netQuantity !== 0;
+            const isClosed = holding.netQuantity === 0;
+            const includeHolding =
+                (selectedPositions.includes("open") && isOpen) ||
+                (selectedPositions.includes("closed") && isClosed);
             return matchesSearch && includeHolding;
         });
-    }, [sortedData, search, includeClosed]);
+    }, [sortedData, search, selectedPositions]);
 
     // Calculate totals.
     const filteredTotals = useMemo(
@@ -380,15 +402,13 @@ function SummaryPage() {
 
     const localProfitPercentage =
         overallTotals.netCost !== 0 ? (overallTotals.profit / overallTotals.netCost) * 100 : null;
-    const localProfit =
-        overallTotals.netCost !== 0 ? overallTotals.profit : null;
+    const localProfit = overallTotals.netCost !== 0 ? overallTotals.profit : null;
     const localChangeToday = sortedData.reduce(
         (sum, holding) => sum + (holding.changeToday || 0),
         0
     );
     const localChangeTodayPercentage =
         overallTotals.netCost !== 0 ? (localChangeToday / overallTotals.netCost) * 100 : null;
-
 
     // Export the table to PDF.
     const exportToPDF = () => {
@@ -405,7 +425,7 @@ function SummaryPage() {
             pdf.save("holdings_summary.pdf");
         });
     };
-    // id="exportableContent"
+
     return (
         <Box
             id="exportableContent"
@@ -424,9 +444,15 @@ function SummaryPage() {
                     color: colors.text,
                 }}
             >
-                <Typography variant="h4" gutterBottom>
-                    Holdings Summary
-                </Typography>
+                <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
+                    <Typography variant="h4" gutterBottom>
+                        Holdings Summary
+                    </Typography>
+                    {/* Hamburger icon to open settings drawer */}
+                    <IconButton onClick={() => setDrawerOpen(true)} sx={{color: colors.text}}>
+                        <MenuIcon/>
+                    </IconButton>
+                </Box>
 
                 {/* Aggregated Metrics */}
                 {aggLoading ? (
@@ -448,16 +474,16 @@ function SummaryPage() {
                                 Total Net Cash: ${formatNumber(aggregateData.overall?.totalNetCost || 0)}
                             </Typography>
                             <Typography variant="body1">
-                                Net Cash (Personal Interactive):
-                                ${formatNumber(aggregateData.netCash?.netCashPersonalInteractive || 0)}
+                                Net Cash (Personal Interactive): $
+                                {formatNumber(aggregateData.netCash?.netCashPersonalInteractive || 0)}
                             </Typography>
                             <Typography variant="body1">
-                                Net Cash (Personal One Zero):
-                                ${formatNumber(aggregateData.netCash?.netCashPersonalOneZero || 0)}
+                                Net Cash (Personal One Zero): $
+                                {formatNumber(aggregateData.netCash?.netCashPersonalOneZero || 0)}
                             </Typography>
                             <Typography variant="body1">
-                                Net Cash (Joint Interactive):
-                                ${formatNumber(aggregateData.netCash?.netCashJointInteractive || 0)}
+                                Net Cash (Joint Interactive): $
+                                {formatNumber(aggregateData.netCash?.netCashJointInteractive || 0)}
                             </Typography>
                         </Paper>
                         <Paper
@@ -473,21 +499,21 @@ function SummaryPage() {
                             <Typography variant="h6">Calculated Performance Metrics</Typography>
                             <Typography variant="body1">
                                 Total Profit Percentage:{" "}
-                                {(localProfitPercentage != null && !Number.isNaN(localProfitPercentage)) ? (
+                                {localProfitPercentage != null && !Number.isNaN(localProfitPercentage) ? (
                                     <span
                                         style={{color: localProfitPercentage >= 0 ? colors.positive : colors.negative}}>
-                                  {formatNumber(localProfitPercentage)}%
-                                </span>
+                    {formatNumber(localProfitPercentage)}%
+                  </span>
                                 ) : (
                                     "N/A"
                                 )}
                             </Typography>
                             <Typography variant="body1">
                                 Total Profit:{" "}
-                                {(localProfit != null && !Number.isNaN(localProfit)) ? (
+                                {localProfit != null && !Number.isNaN(localProfit) ? (
                                     <span style={{color: localProfit >= 0 ? colors.positive : colors.negative}}>
-                                       ${formatNumber(localProfit)}
-                                     </span>
+                    ${formatNumber(localProfit)}
+                  </span>
                                 ) : (
                                     "N/A"
                                 )}
@@ -495,60 +521,47 @@ function SummaryPage() {
                             <Typography variant="body1">
                                 Change Today:{" "}
                                 <span style={{color: localChangeToday >= 0 ? colors.positive : colors.negative}}>
-                                    ${formatNumber(localChangeToday)}
-                                </span>
+                  ${formatNumber(localChangeToday)}
+                </span>
                             </Typography>
                             <Typography variant="body1">
                                 Change Today Percentage:{" "}
                                 {localChangeTodayPercentage != null ? (
                                     <span
                                         style={{color: localChangeTodayPercentage >= 0 ? colors.positive : colors.negative}}>
-                                        {formatNumber(localChangeTodayPercentage)}%
-                                    </span>
+                    {formatNumber(localChangeTodayPercentage)}%
+                  </span>
                                 ) : (
                                     "N/A"
                                 )}
                             </Typography>
                         </Paper>
-
                     </Box>
                 ) : null}
 
-
-                {/* Settings Bar */}
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        mb: 2,
-                        border: `1px solid ${colors.border}`,
-                        p: 1,
-                    }}
-                >
-                    <FormControl sx={{minWidth: 200, mr: 2}}>
-                        <InputLabel id="columns-select-label" sx={{color: colors.text}}>
-                            Columns
+                {/* Search, Position Filter, and Columns Filter Icon Row */}
+                <Box sx={{display: "flex", alignItems: "center", mb: 2}}>
+                    <TextField
+                        label="Search by Ticker, Source, or Type"
+                        variant="outlined"
+                        fullWidth
+                        sx={{
+                            input: {color: colors.text},
+                            label: {color: colors.text},
+                        }}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                    {/* Multi-select for position status */}
+                    <FormControl sx={{minWidth: 200, ml: 2}}>
+                        <InputLabel id="position-filter-label" sx={{color: colors.text}}>
+                            Position Status
                         </InputLabel>
-                        {/* Columns selection dropdown */}
                         <Select
+                            labelId="position-filter-label"
                             multiple
-                            value={Object.keys(visibleColumns).filter((key) => visibleColumns[key])}
-                            onChange={(e) => {
-                                const selected = e.target.value;
-                                const newVisible = {};
-                                columns.forEach((col) => {
-                                    newVisible[col.key] = col.alwaysVisible || selected.includes(col.key);
-                                });
-                                setVisibleColumns(newVisible);
-                            }}
-                            renderValue={(selected) =>
-                                selected.length > 3
-                                    ? `${selected
-                                        .slice(0, 3)
-                                        .map((key) => columns.find((col) => col.key === key)?.label)
-                                        .join(", ")}...`
-                                    : selected.map((key) => columns.find((col) => col.key === key)?.label).join(", ")
-                            }
+                            value={selectedPositions}
+                            onChange={(e) => setSelectedPositions(e.target.value)}
+                            renderValue={(selected) => selected.join(", ")}
                             sx={{
                                 color: colors.text,
                                 "& .MuiOutlinedInput-notchedOutline": {
@@ -564,76 +577,51 @@ function SummaryPage() {
                                 },
                             }}
                         >
-                            {columns.map((col) => (
-                                <MenuItem key={col.key} value={col.key}>
-                                    <Checkbox checked={visibleColumns[col.key]} disabled={col.alwaysVisible}
+                            {["open", "closed"].map((status) => (
+                                <MenuItem key={status} value={status}>
+                                    <Checkbox checked={selectedPositions.indexOf(status) > -1}
                                               sx={{color: colors.text}}/>
-                                    <ListItemText primary={col.label}/>
+                                    <ListItemText primary={status.charAt(0).toUpperCase() + status.slice(1)}/>
                                 </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: colors.text}}
-                                checked={includeClosed}
-                                onChange={(e) => setIncludeClosed(e.target.checked)}
-                            />
-                        }
-                        label="Include Closed Positions"
-                        sx={{mr: 2, color: colors.text}}
-                    />
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: colors.text}}
-                                checked={autoRefresh}
-                                onChange={(e) => setAutoRefresh(e.target.checked)}
-                            />
-                        }
-                        label="Auto Refresh"
-                        sx={{mr: 2, color: colors.text}}
-                    />
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: colors.text}}
-                                checked={darkMode}
-                                onChange={(e) => setDarkMode(e.target.checked)}
-                            />
-                        }
-                        label="Dark Mode"
-                        sx={{mr: 2, color: colors.text}}
-                    />
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                sx={{mr: 2, color: colors.text}}
-                                checked={highlightSignificant}
-                                onChange={(e) => setHighlightSignificant(e.target.checked)}
-                            />
-                        }
-                        label="Highlight Significant Changes"
-                        sx={{color: colors.text}}
-                    />
-                    <Button variant="contained" sx={{ml: 2}} onClick={exportToPDF}>
-                        Export to PDF
-                    </Button>
-                </Box>
+                    {/* Columns Filter Icon (3-dots) */}
+                    <IconButton onClick={handleColumnsMenuOpen} sx={{ml: 2, color: colors.text}}>
+                        <MoreVertIcon/>
+                    </IconButton>
+                    <Menu
+                        anchorEl={columnsMenuAnchor}
+                        open={Boolean(columnsMenuAnchor)}
+                        onClose={handleColumnsMenuClose}
+                    >
+                        <Typography variant="subtitle1" sx={{m: 2, color: colors.text}}>
+                            Columns
+                        </Typography>
+                        {columns.map((col) => (
+                            <MenuItem
+                                key={col.key}
+                                onClick={() => {
+                                    // Toggle column visibility if not always visible.
+                                    if (!col.alwaysVisible) {
+                                        setVisibleColumns((prev) => ({
+                                            ...prev,
+                                            [col.key]: !prev[col.key],
+                                        }));
+                                    }
+                                }}
+                            >
+                                <Checkbox
+                                    checked={visibleColumns[col.key]}
+                                    disabled={col.alwaysVisible}
+                                    sx={{color: colors.text}}
+                                />
+                                <ListItemText primary={col.label}/>
+                            </MenuItem>
+                        ))}
+                    </Menu>
 
-                {/* Search Filter */}
-                <TextField
-                    label="Search by Ticker, Source, or Type"
-                    variant="outlined"
-                    fullWidth
-                    sx={{
-                        mb: 2,
-                        input: {color: colors.text},
-                        label: {color: colors.text},
-                    }}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
+                </Box>
 
                 {/* Holdings Table */}
                 {loading ? (
@@ -695,14 +683,14 @@ function SummaryPage() {
                                         } else if (col.key === "profit") {
                                             cellContent = (
                                                 <span
-                                                    style={{color: filteredTotals.profit >= 0 ? colors.positive : colors.negative}}>
-                                        ${formatNumber(filteredTotals.profit)}
-                                      </span>
+                                                    style={{color: filteredTotals.profit >= 0 ? colors.positive : colors.negative}}
+                                                >
+                          ${formatNumber(filteredTotals.profit)}
+                        </span>
                                             );
                                         } else if (col.key === "changeToday") {
                                             cellContent = `$${formatNumber(localChangeToday)}`;
                                         } else if (index === 0) {
-                                            // For the first visible column that isn't one of the totals columns, display a title.
                                             cellContent = "Total:";
                                         }
                                         return (
@@ -713,11 +701,64 @@ function SummaryPage() {
                                     })}
                                 </TableRow>
                             </TableFooter>
-
                         </Table>
                     </TableContainer>
                 )}
             </Container>
+
+            {/* Settings Drawer */}
+            <Drawer
+                anchor="right"
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                PaperProps={{
+                    sx: {
+                        backgroundColor: colors.background, // uses dark mode color when enabled
+                        color: colors.text,
+                        height: "100vh", // ensures the entire drawer is styled
+                    },
+                }}
+            >
+                <Box sx={{width: 250, p: 2}}>
+                    <Typography variant="h6" gutterBottom>
+                        Settings
+                    </Typography>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={autoRefresh}
+                                onChange={(e) => setAutoRefresh(e.target.checked)}
+                                sx={{color: colors.text}}
+                            />
+                        }
+                        label="Auto Refresh"
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={darkMode}
+                                onChange={(e) => setDarkMode(e.target.checked)}
+                                sx={{color: colors.text}}
+                            />
+                        }
+                        label="Dark Mode"
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={highlightSignificant}
+                                onChange={(e) => setHighlightSignificant(e.target.checked)}
+                                sx={{color: colors.text}}
+                            />
+                        }
+                        label="Highlight Significant Changes"
+                    />
+                    <Button variant="contained" onClick={exportToPDF} sx={{mt: 2}}>
+                        Export to PDF
+                    </Button>
+                </Box>
+            </Drawer>
+
         </Box>
     );
 }
