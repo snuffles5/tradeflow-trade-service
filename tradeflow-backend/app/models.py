@@ -175,6 +175,10 @@ class UnrealizedHolding(SoftDeleteMixin, db.Model):
     close_date = db.Column(db.DateTime, nullable=True)
     stop_loss = db.Column(db.Float, nullable=True)
 
+    # New fields for closed positions
+    realized_pnl = db.Column(db.Float, nullable=True)
+    realized_pnl_percentage = db.Column(db.Float, nullable=True)
+
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
@@ -184,9 +188,15 @@ class UnrealizedHolding(SoftDeleteMixin, db.Model):
     def __repr__(self):
         owner_name = self.owner.name if self.owner else "N/A"
         source_name = self.source.name if self.source else "N/A"
+        status = "Closed" if self.net_quantity == 0 else "Open"
+        pnl_info = (
+            f"RealizedPnL={self.realized_pnl}"
+            if status == "Closed" and self.realized_pnl is not None
+            else f"AvgCost={self.average_cost}"
+        )
         return (
-            f"<UnrealizedHolding Owner={owner_name} Source={source_name} {self.ticker}: "
-            f"NetQty={self.net_quantity}, AvgCost={self.average_cost}, "
+            f"<UnrealizedHolding Owner={owner_name} Source={source_name} {self.ticker} [{status}]: "
+            f"NetQty={self.net_quantity}, {pnl_info}, "
             f"NetCost={self.net_cost}, LatestPrice={self.latest_trade_price}>"
         )
 

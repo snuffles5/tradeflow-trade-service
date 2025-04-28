@@ -6,10 +6,10 @@ from app.database import db
 from app.models import Trade
 from app.models import TradeOwner
 from app.models import TradeSource
+from app.models import UnrealizedHolding
 from app.schemas import TradeOwnerSchema
 from app.schemas import TradeSchema
 from app.schemas import TradeSourceSchema
-from app.schemas import UnrealizedHoldingSchema
 from exceptions import HoldingRetrievalError
 from exceptions import TradeNotFoundException
 from flask import Blueprint
@@ -19,15 +19,16 @@ from flask import request
 from services.db_queries import get_active_trades
 from services.db_queries import get_all_holdings
 from services.db_queries import get_trade_by_id
-from services.db_queries import get_trades_by_holding_id
 from services.providers.factory import ProviderFactory
 from services.trade_holdings import get_holding_period
 from services.trade_holdings import process_new_trade
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from utils.consts import TRADES_JSON_FILE_PATH
 from utils.logger import log
 from utils.text_utils import dict_keys_to_camel
 from utils.text_utils import dict_keys_to_snake
+
 
 trades_bp = Blueprint("trades_bp", __name__)
 
@@ -191,58 +192,58 @@ def list_trades():
 
 @trades_bp.route("/holdings", methods=["GET"])
 def list_holdings():
-    """
-    Fetches all unrealized holdings, includes nested owner/source.
-    (Reverted to previous simplified version for debugging)
-    """
-    with current_app.app_context():
-        response = get_all_holdings()
-        if not response.success:
-            current_app.logger.error(
-                f"Holding retrieval failed: {response.error_message}"
+    current_app.logger.info("Received request for /holdings")
+    try:
+        holdings = (
+            UnrealizedHolding.query
+            # Eager load related data to avoid N+1 queries
+            .options(
+                selectinload(
+                    UnrealizedHolding.trades
+                ),  # Load all trades for holding period calc
+                joinedload(UnrealizedHolding.source),  # Load source info
+                joinedload(UnrealizedHolding.owner),  # Load owner info
             )
-            raise HoldingRetrievalError(response.error_message)
-        holdings = response.data
-
-        # Ensure holdings is a list (though get_all_holdings should return one)
-        if not isinstance(holdings, list):
-            log.warning(
-                f"get_all_holdings did not return a list. Type: {type(holdings)}. Wrapping in list."
-            )
-            holdings = [holdings] if holdings else []
+            .order_by(UnrealizedHolding.ticker)
+            .all()
+        )
 
         results = []
-        holding_schema = UnrealizedHoldingSchema()
+        for holding in holdings:
+            # Basic data from the holding record
+            holding_data = {
+                "id": holding.id,
+                "ticker": holding.ticker,
+                "netQuantity": holding.net_quantity,
+                "netCost": holding.net_cost,
+                "averageCost": holding.average_cost,
+                "holdingPeriod": get_holding_period(holding),
+                "tradeCount": len(holding.trades),  # Simple trade count
+                "source": {"id": holding.source.id, "name": holding.source.name}
+                if holding.source
+                else None,
+                "owner": {"id": holding.owner.id, "name": holding.owner.name}
+                if holding.owner
+                else None,
+                "status": "closed"
+                if holding.net_quantity == 0
+                else "open",  # Determine status
+                # Include the realized P/L fields (might be None if not calculated yet)
+                "realizedPnl": holding.realized_pnl,
+                "realizedPnlPercentage": holding.realized_pnl_percentage,
+                # Add latest trade price for reference (useful for closed positions)
+                "latestTradePrice": holding.latest_trade_price,
+            }
+            results.append(
+                dict_keys_to_camel(holding_data)
+            )  # Convert keys for frontend
 
-        for h in holdings:
-            try:
-                holding_dict_snake = holding_schema.dump(h)
-                response_trades = get_trades_by_holding_id(h.id)
-                holding_trades = response_trades.data if response_trades.success else []
-                holding_dict_snake["trade_count"] = len(holding_trades)
-                try:
-                    holding_dict_snake["holding_period"] = get_holding_period(h)
-                except Exception as period_err:
-                    current_app.logger.error(
-                        f"Error calculating holding period for {h.id}: {period_err}",
-                        exc_info=True,
-                    )
-                    holding_dict_snake["holding_period"] = None
+        current_app.logger.info(f"Returning {len(results)} holdings from /holdings")
+        return jsonify(results)
 
-                # Temporarily remove profit calculation again
-                holding_dict_snake.pop("profit", None)
-                holding_dict_snake.pop("profit_percentage", None)
-
-                results.append(dict_keys_to_camel(holding_dict_snake))
-            except Exception as loop_err:
-                current_app.logger.error(
-                    f"Error processing holding ID {h.id}: {str(loop_err)}",
-                    exc_info=True,
-                )
-                continue
-
-        # Reverted: Removed logging before return
-        return jsonify(results), 200
+    except Exception as e:
+        current_app.logger.error(f"Error in /holdings: {e}", exc_info=True)
+        return jsonify({"error": "Failed to fetch holdings"}), 500
 
 
 @trades_bp.route("/holdings-summary", methods=["GET"])
@@ -300,27 +301,29 @@ def holdings_summary():
 
 @trades_bp.route("/stock-info/<ticker>", methods=["GET"])
 def get_stock_info(ticker):
-    """
-    Fetches the latest market price for a given ticker (from your price provider).
-    """
+    current_app.logger.debug(f"Received request for /stock-info/{ticker}")
+    # Use the provider_factory, not the non-existent service
     try:
         stock = provider_factory.get_stock(ticker)
-        return (
-            jsonify(
-                dict_keys_to_camel(
-                    {
-                        "ticker": ticker,
-                        "last_price": stock.price,
-                        "change_today": stock.change_today,
-                        "change_today_percentage": stock.change_today_percentage,
-                    }
-                )
-            ),
-            200,
-        )
+        if stock:
+            # Return the structure expected by the frontend (lastPrice, etc.)
+            stock_data = {
+                "ticker": ticker,
+                "lastPrice": stock.price,
+                "changeToday": stock.change_today,
+                "changeTodayPercentage": stock.change_today_percentage,
+            }
+            current_app.logger.debug(f"Returning stock info for {ticker}: {stock_data}")
+            # Convert keys to camelCase for consistency
+            return jsonify(dict_keys_to_camel(stock_data))
+        else:
+            current_app.logger.warning(f"No stock info found for {ticker} via provider")
+            return jsonify({"error": "Stock data not found"}), 404
     except Exception as e:
-        current_app.logger.error(f"Error fetching last price for {ticker}: {str(e)}")
-        return jsonify({"error": "failed to get last price"}), 500
+        current_app.logger.error(
+            f"Error fetching stock info for {ticker} via provider: {e}", exc_info=True
+        )
+        return jsonify({"error": "Failed to fetch stock data"}), 500
 
 
 @trades_bp.route("/trades/<int:trade_id>", methods=["PUT"])

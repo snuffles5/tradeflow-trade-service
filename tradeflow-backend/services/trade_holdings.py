@@ -87,8 +87,20 @@ def update_unrealized_holding(new_trade):
 def process_new_trade(new_trade):
     """
     Process a new trade by updating its associated unrealized holding.
+    If the trade closes the holding, trigger a recalculation to set realized PnL.
     """
-    return update_unrealized_holding(new_trade)
+    holding = update_unrealized_holding(new_trade)
+    # If the update resulted in the holding being closed, recalculate
+    # to ensure realized PnL is calculated and stored correctly.
+    if holding and holding.net_quantity == 0:
+        log.debug(
+            f"Holding {holding.id} closed by new trade {new_trade.id}. Recalculating for realized PnL."
+        )
+        holding = recalc_unrealized_holding(
+            holding
+        )  # Recalculate and update holding object
+
+    return holding  # Return the potentially recalculated holding
 
 
 def get_holding_period(holding):
@@ -122,14 +134,7 @@ def get_profit_percentage(holding):
 def recalc_unrealized_holding(holding):
     """
     Recalculate the unrealized holding based on all trades associated with it.
-
-    This function queries all trades linked to the holding (via holding_id) and recomputes:
-      - net_quantity
-      - net_cost
-      - weighted average_cost (based on buy trades)
-      - latest_trade_price, open_date, and if applicable, close_date and deleted_at.
-
-    If no trades remain for this holding, the holding is removed.
+    Sets realized PnL fields if the holding becomes closed.
     """
     response = get_trades_by_holding_id(holding.id)
     if not response.success:
@@ -137,7 +142,11 @@ def recalc_unrealized_holding(holding):
     trades = response.data
 
     if not trades:
-        holding.soft_delete()
+        holding.soft_delete()  # Also sets deleted_at
+        # Clear PnL fields if no trades remain?
+        holding.realized_pnl = None
+        holding.realized_pnl_percentage = None
+        db.session.add(holding)
         db.session.flush()
         return None
 
@@ -145,41 +154,68 @@ def recalc_unrealized_holding(holding):
     net_cost = 0
     total_buy_quantity = 0
     total_buy_cost = 0
-    open_date = trades[0].trade_date
-    latest_trade_date = trades[-1].trade_date
+    total_sell_value = 0  # Track sell value for realized PnL
+    open_date = min(trade.trade_date for trade in trades)  # More robust open date
+    latest_trade_date = max(
+        trade.trade_date for trade in trades
+    )  # More robust latest date
 
     for trade in trades:
         effective_quantity = trade.quantity
-        if trade.transaction_type == TradeTransactionType.sell:
+        # Ensure transaction type comparison is reliable
+        is_sell = trade.transaction_type == TradeTransactionType.sell
+
+        if is_sell:
             effective_quantity = -abs(trade.quantity)
-        net_quantity += effective_quantity
-        trade_value = effective_quantity * trade.price_per_unit
-        net_cost += trade_value
-        if trade.transaction_type == TradeTransactionType.buy:
+            total_sell_value += trade.quantity * trade.price_per_unit
+        else:  # It's a Buy
             total_buy_quantity += trade.quantity
             total_buy_cost += trade.quantity * trade.price_per_unit
 
+        net_quantity += effective_quantity
+        trade_value = effective_quantity * trade.price_per_unit
+        net_cost += trade_value
+
+    # Calculate average cost based on buys
     average_cost = (
         (total_buy_cost / total_buy_quantity)
         if total_buy_quantity > 0
+        # Default if no buys? Maybe last price isn't ideal. Consider None or raising error.
         else trades[-1].price_per_unit
     )
 
+    # Update core holding fields
     holding.net_quantity = net_quantity
     holding.net_cost = net_cost
     holding.average_cost = average_cost
-    holding.latest_trade_price = trades[-1].price_per_unit
+    holding.latest_trade_price = trades[
+        -1
+    ].price_per_unit  # Price of the very last trade
     holding.open_date = open_date
 
+    # Handle closed state and realized PnL
     if net_quantity == 0:
         holding.close_date = latest_trade_date
-        holding.deleted_at = latest_trade_date
+        holding.deleted_at = latest_trade_date  # Set soft delete timestamp
+        # Calculate and store realized PnL
+        holding.realized_pnl = total_sell_value - total_buy_cost
+        holding.realized_pnl_percentage = (
+            (holding.realized_pnl / total_buy_cost * 100)
+            if total_buy_cost > 0
+            else 0  # Or None if preferred
+        )
     else:
+        # Position is open, clear closed state fields
         holding.close_date = None
         holding.deleted_at = None
+        holding.realized_pnl = None
+        holding.realized_pnl_percentage = None
 
     db.session.add(holding)
     db.session.flush()
+    log.debug(
+        f"Recalculated holding {holding.id}. NetQty={holding.net_quantity}, RealizedPnL={holding.realized_pnl}"
+    )
     return holding
 
 
