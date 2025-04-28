@@ -46,11 +46,24 @@ const useSortableData = (items, initialConfig = {key: "netQuantity", direction: 
         const sortable = [...items];
         if (sortConfig !== null) {
             sortable.sort((a, b) => {
-                const aValue = a[sortConfig.key] ?? "";
-                const bValue = b[sortConfig.key] ?? "";
+                let aValue, bValue;
+
+                // Use custom sortValue function if provided in config, otherwise use key directly
+                if (sortConfig.sortValue && typeof sortConfig.sortValue === 'function') {
+                    aValue = sortConfig.sortValue(a) ?? ""; // Use nullish coalescing for undefined/null
+                    bValue = sortConfig.sortValue(b) ?? "";
+                } else {
+                    aValue = a[sortConfig.key] ?? "";
+                    bValue = b[sortConfig.key] ?? "";
+                }
+
                 if (typeof aValue === "number" && typeof bValue === "number") {
+                    // Handle potential NaN values by treating them as 0 or placing them consistently
+                    aValue = isNaN(aValue) ? -Infinity : aValue; // Or 0, or Infinity depending on desired placement
+                    bValue = isNaN(bValue) ? -Infinity : bValue;
                     return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
                 }
+                // String comparison
                 return sortConfig.direction === "asc"
                     ? String(aValue).localeCompare(String(bValue))
                     : String(bValue).localeCompare(String(aValue));
@@ -60,14 +73,15 @@ const useSortableData = (items, initialConfig = {key: "netQuantity", direction: 
     }, [items, sortConfig]);
 
     const requestSort = useCallback(
-        (key) => {
+        (key, sortValueFunc = null) => { // Accept optional sortValue function
             let direction = "asc";
             if (sortConfig.key === key && sortConfig.direction === "asc") {
                 direction = "desc";
             }
-            setSortConfig({key, direction});
+            // Store the key, direction, and the sortValue function in the config
+            setSortConfig({key, direction, sortValue: sortValueFunc});
         },
-        [sortConfig]
+        [sortConfig] // Dependency remains sortConfig
     );
 
     return {items: sortedItems, sortConfig, requestSort};
@@ -110,36 +124,43 @@ function SummaryPage() {
         outerBackground: darkMode ? "#222" : "inherit",
     };
 
-    // Define columns configuration with formatting that references colors from the object.
+    // Define columns configuration with formatting and sortValue
     const columns = [
         {
             key: "ticker",
             label: "Ticker",
             alwaysVisible: true,
             defaultVisible: true,
+            sortable: true, // Mark columns as sortable
         },
         {
-            key: "tradeSource",
-            label: "Trade Source",
+            key: "tradeSource", // Still use a key, but sortValue overrides access
+            label: "Source / Owner",
             defaultVisible: true,
-            format: (row) => `${row.source}${row.tradeType ? ` (${row.tradeType})` : ""}`,
+            format: (row) => `${row.source?.name || 'N/A'}${row.owner?.name ? ` (${row.owner.name})` : ""}`,
+            sortable: true,
+            // Provide function to get the value for sorting
+            sortValue: (row) => `${row.source?.name || ''}${row.owner?.name || ''}`.toLowerCase(),
         },
         {
             key: "netQuantity",
             label: "Net Quantity",
             defaultVisible: false,
+            sortable: true,
         },
         {
             key: "netCost",
             label: "Net Cost",
             defaultVisible: true,
             format: (row) => `$${formatNumber(row.netCost)}`,
+            sortable: true,
         },
         {
             key: "latestTradePrice",
             label: "Latest Trade Price",
             defaultVisible: true,
             format: (row) => (row.latestTradePrice ? `$${formatNumber(row.latestTradePrice)}` : "N/A"),
+            sortable: true,
         },
         {
             key: "currentMarketValue",
@@ -149,6 +170,9 @@ function SummaryPage() {
                 row.netQuantity != null && row.currentPrice != null
                     ? `$${formatNumber(row.netQuantity * row.currentPrice)}`
                     : <span style={{color: "lightgray"}}>N/A</span>,
+            sortable: true,
+            // Provide function to calculate the value for sorting
+            sortValue: (row) => (row.netQuantity != null && row.currentPrice != null) ? (row.netQuantity * row.currentPrice) : null, // Return null/undefined if cannot calculate
         },
         {
             key: "currentPrice",
@@ -162,6 +186,7 @@ function SummaryPage() {
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
+            sortable: true,
         },
         {
             key: "profit",
@@ -177,6 +202,7 @@ function SummaryPage() {
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
+            sortable: true,
         },
         {
             key: "profitPercentage",
@@ -192,6 +218,7 @@ function SummaryPage() {
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
+            sortable: true,
             footer: () => "",
         },
         {
@@ -206,6 +233,7 @@ function SummaryPage() {
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
+            sortable: true,
         },
         {
             key: "changeTodayPercentage",
@@ -219,17 +247,20 @@ function SummaryPage() {
                 ) : (
                     <span style={{color: "lightgray"}}>N/A</span>
                 ),
+            sortable: true,
         },
         {
             key: "holdingPeriod",
             label: "Holding Period (days)",
             defaultVisible: false,
+            sortable: true,
         },
         {
             key: "tradeCount",
             label: "Trade Count",
             defaultVisible: false,
             format: (row) => (row.tradeCount !== undefined ? Number(row.tradeCount).toLocaleString() : "N/A"),
+            sortable: true,
         },
     ];
 
@@ -243,28 +274,33 @@ function SummaryPage() {
 
     // Fetch holdings data on mount and aggregate metrics.
     useEffect(() => {
+        setLoading(true); // Start loading indicators
+        setAggLoading(true);
+
         fetch(`${process.env.REACT_APP_API_URL}/holdings`)
-            .then((res) => res.json())
+            .then(res => res.ok ? res.json() : Promise.reject('Holdings fetch failed'))
             .then((data) => {
-                setHoldingsData(data);
+                setHoldingsData(data || []);
                 setLoading(false);
             })
             .catch((err) => {
                 console.error("Error fetching holdings:", err);
+                // Show snackbar or error message
                 setLoading(false);
             });
 
-        fetch(`${process.env.REACT_APP_API_URL}/holdings-summary`)
-            .then((res) => res.json())
+        fetch(`${process.env.REACT_APP_API_URL}/holdings-summary`) // Fetch the updated summary endpoint
+            .then(res => res.ok ? res.json() : Promise.reject('Holdings summary fetch failed'))
             .then((data) => {
-                setAggregateData(data);
+                setAggregateData(data); // Store the new structure { overall: {..}, netCashBreakdown: [...] }
                 setAggLoading(false);
             })
             .catch((err) => {
                 console.error("Error fetching holdings summary:", err);
+                // Show snackbar or error message
                 setAggLoading(false);
             });
-    }, []);
+    }, []); // Fetch only on mount
 
     // Auto-refresh if enabled.
     useEffect(() => {
@@ -345,7 +381,7 @@ function SummaryPage() {
     const filteredData = useMemo(() => {
         const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
         return sortedData.filter((holding) => {
-            const tradeSourceValue = `${holding.source} ${holding.tradeType || ""}`.toLowerCase();
+            const tradeSourceValue = `${holding.source?.name || ""} ${holding.owner?.name || ""}`.toLowerCase();
             const matchesSearch = searchTerms.every(
                 (term) =>
                     holding.ticker.toLowerCase().includes(term) || tradeSourceValue.includes(term)
@@ -359,27 +395,38 @@ function SummaryPage() {
         });
     }, [sortedData, search, selectedPositions]);
 
-    // Calculate totals.
+    // Calculate totals based on FILTERED data.
     const filteredTotals = useMemo(
         () =>
             filteredData.reduce(
                 (acc, holding) => {
                     acc.netQuantity += Number(holding.netQuantity) || 0;
                     acc.netCost += Number(holding.netCost) || 0;
-                    acc.profit += holding.profit != null ? Number(holding.profit) : 0;
+                    // Use the profit value calculated earlier (might be null/0 for open)
+                    acc.profit += holding.profit != null && !Number.isNaN(Number(holding.profit)) ? Number(holding.profit) : 0;
                     acc.tradeCount += Number(holding.tradeCount) || 0;
-                    acc.currentMarketValue +=
-                        holding.netQuantity != null && holding.currentPrice != null
+                    acc.currentMarketValue += (
+                        (holding.netQuantity != null && holding.currentPrice != null)
                             ? holding.netQuantity * holding.currentPrice
-                            : 0;
+                            : 0
+                    );
+                    // Calculate Change Today total based on filtered data
+                    acc.changeToday += holding.changeToday != null && !Number.isNaN(Number(holding.changeToday)) ? Number(holding.changeToday) : 0;
                     return acc;
                 },
-                {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0}
+                {
+                    netQuantity: 0,
+                    netCost: 0,
+                    profit: 0,
+                    tradeCount: 0,
+                    currentMarketValue: 0,
+                    changeToday: 0 // Initialize changeToday sum
+                }
             ),
-        [filteredData]
+        [filteredData] // Dependency is the filtered data
     );
 
-    // Calculate totals using the full sortedData array rather than filteredData.
+    // Calculate OVERALL totals (unfiltered) for the top summary boxes
     const overallTotals = useMemo(
         () =>
             sortedData.filter((holding) => !holding.updating).reduce(
@@ -397,16 +444,19 @@ function SummaryPage() {
                 },
                 {netQuantity: 0, netCost: 0, profit: 0, tradeCount: 0, currentMarketValue: 0}
             ),
-        [sortedData]
+        [sortedData] // Depends on the full sorted data
     );
 
+    // Calculate overall performance metrics based on OVERALL totals
     const localProfitPercentage =
         overallTotals.netCost !== 0 ? (overallTotals.profit / overallTotals.netCost) * 100 : null;
     const localProfit = overallTotals.netCost !== 0 ? overallTotals.profit : null;
+    // Correct: Calculate overall change today based on the full sortedData
     const localChangeToday = sortedData.reduce(
-        (sum, holding) => sum + (holding.changeToday || 0),
+        (sum, holding) => sum + (holding.changeToday != null && !isNaN(Number(holding.changeToday)) ? Number(holding.changeToday) : 0),
         0
     );
+    // Correct: Base overall percentage change on overall totals
     const localChangeTodayPercentage =
         overallTotals.netCost !== 0 ? (localChangeToday / overallTotals.netCost) * 100 : null;
 
@@ -470,21 +520,20 @@ function SummaryPage() {
                             }}
                         >
                             <Typography variant="h6">Overall Metrics</Typography>
+                            {/* Display Total Net Cost */}
                             <Typography variant="body1">
-                                Total Net Cash: ${formatNumber(aggregateData.overall?.totalNetCost || 0)}
+                                Total Net Investment: ${formatNumber(aggregateData.overall?.totalNetCost || 0)}
                             </Typography>
-                            <Typography variant="body1">
-                                Net Cash (Personal Interactive): $
-                                {formatNumber(aggregateData.netCash?.netCashPersonalInteractive || 0)}
-                            </Typography>
-                            <Typography variant="body1">
-                                Net Cash (Personal One Zero): $
-                                {formatNumber(aggregateData.netCash?.netCashPersonalOneZero || 0)}
-                            </Typography>
-                            <Typography variant="body1">
-                                Net Cash (Joint Interactive): $
-                                {formatNumber(aggregateData.netCash?.netCashJointInteractive || 0)}
-                            </Typography>
+                            {/* Dynamically display Net Cash Breakdown */}
+                            {aggregateData.netCashBreakdown && aggregateData.netCashBreakdown.length > 0 ? (
+                                aggregateData.netCashBreakdown.map((item, index) => (
+                                    <Typography key={index} variant="body1">
+                                        {item.combination}: ${formatNumber(item.netCost)}
+                                    </Typography>
+                                ))
+                            ) : (
+                                <Typography variant="body1" sx={{ fontStyle: 'italic' }}>No holdings found for breakdown.</Typography>
+                            )}
                         </Paper>
                         <Paper
                             sx={{
@@ -542,7 +591,7 @@ function SummaryPage() {
                 {/* Search, Position Filter, and Columns Filter Icon Row */}
                 <Box sx={{display: "flex", alignItems: "center", mb: 2}}>
                     <TextField
-                        label="Search by Ticker, Source, or Type"
+                        label="Search by Ticker, Source, or Owner"
                         variant="outlined"
                         fullWidth
                         sx={{
@@ -641,13 +690,18 @@ function SummaryPage() {
                                         .filter((col) => visibleColumns[col.key])
                                         .map((col) => (
                                             <TableCell key={col.key} sx={{color: colors.text}}>
-                                                <TableSortLabel
-                                                    active={sortConfig.key === col.key}
-                                                    direction={sortConfig.key === col.key ? sortConfig.direction : "asc"}
-                                                    onClick={() => requestSort(col.key)}
-                                                >
-                                                    {col.label}
-                                                </TableSortLabel>
+                                                {col.sortable ? (
+                                                    <TableSortLabel
+                                                        active={sortConfig.key === col.key}
+                                                        direction={sortConfig.key === col.key ? sortConfig.direction : "asc"}
+                                                        // Pass the key and the sortValue function (if defined) to requestSort
+                                                        onClick={() => requestSort(col.key, col.sortValue)}
+                                                    >
+                                                        {col.label}
+                                                    </TableSortLabel>
+                                                ) : (
+                                                    col.label // Render label directly if not sortable
+                                                )}
                                             </TableCell>
                                         ))}
                                 </TableRow>
@@ -689,7 +743,12 @@ function SummaryPage() {
                         </span>
                                             );
                                         } else if (col.key === "changeToday") {
-                                            cellContent = `$${formatNumber(localChangeToday)}`;
+                                            // Use the changeToday calculated from filteredTotals
+                                            cellContent = (
+                                                 <span style={{color: filteredTotals.changeToday >= 0 ? colors.positive : colors.negative}}>
+                                                    ${formatNumber(filteredTotals.changeToday)}
+                                                </span>
+                                            );
                                         } else if (index === 0) {
                                             cellContent = "Total:";
                                         }

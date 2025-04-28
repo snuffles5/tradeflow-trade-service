@@ -19,9 +19,13 @@ import {
     IconButton,
     Snackbar,
     Alert,
+    Select,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
+
+// Helper to get API URL
+const API_URL = process.env.REACT_APP_API_URL || "";
 
 function TradesList() {
     const [trades, setTrades] = useState([]);
@@ -30,8 +34,13 @@ function TradesList() {
     const [darkMode, setDarkMode] = useState(false);
     const [highlightSell, setHighlightSell] = useState(true);
     const [contextMenu, setContextMenu] = useState(null); // { mouseX, mouseY, trade }
-    const [editingTrade, setEditingTrade] = useState(null); // trade object being edited
+    const [editingTrade, setEditingTrade] = useState(null); // Stores the full trade object being edited
     const [snackbar, setSnackbar] = useState({open: false, message: "", severity: "success"});
+
+    // State for owners and sources (needed for editing dropdowns)
+    const [owners, setOwners] = useState([]);
+    const [sources, setSources] = useState([]);
+    const [loadingOptions, setLoadingOptions] = useState(true);
 
     // Define color scheme similar to Summary page.
     const colors = {
@@ -54,14 +63,24 @@ function TradesList() {
         setSnackbar({...snackbar, open: false});
     };
 
+    // Fetch trades, owners, and sources
     useEffect(() => {
-        fetch(`${process.env.REACT_APP_API_URL}/trades`)
-            .then((res) => res.json())
-            .then((data) => setTrades(data))
-            .catch((err) => {
-                console.error("Error fetching trades:", err);
-                showSnackbar("Error fetching trades", "error");
-            });
+        Promise.all([
+            fetch(`${API_URL}/trades`).then(res => res.ok ? res.json() : Promise.reject('Trades fetch failed')),
+            fetch(`${API_URL}/trade-owners`).then(res => res.ok ? res.json() : Promise.reject('Owners fetch failed')),
+            fetch(`${API_URL}/trade-sources`).then(res => res.ok ? res.json() : Promise.reject('Sources fetch failed')),
+        ])
+        .then(([tradesData, ownersData, sourcesData]) => {
+            setTrades(tradesData || []);
+            setOwners(ownersData || []);
+            setSources(sourcesData || []);
+            setLoadingOptions(false);
+        })
+        .catch(err => {
+            console.error("Error fetching initial data:", err);
+            showSnackbar(typeof err === 'string' ? err : "Error fetching data", "error");
+            setLoadingOptions(false);
+        });
     }, []);
 
     // Sorting logic.
@@ -73,11 +92,14 @@ function TradesList() {
         });
     }, [trades, sortConfig]);
 
-    // Filtering logic.
+    // Filtering logic - update to use nested names
     const filteredTrades = useMemo(() => {
         const searchTerms = search.toLowerCase().split(" ").filter(term => term);
         return sortedTrades.filter(trade => {
-            const combined = `${trade.ticker} ${trade.source} ${trade.tradeType}`.toLowerCase();
+            // Check if owner and source exist before accessing name
+            const ownerName = trade.owner?.name || "";
+            const sourceName = trade.source?.name || "";
+            const combined = `${trade.ticker} ${sourceName} ${ownerName}`.toLowerCase();
             return searchTerms.every(term => combined.includes(term));
         });
     }, [sortedTrades, search]);
@@ -105,7 +127,6 @@ function TradesList() {
         }
     };
 
-
     const handleCloseContextMenu = () => {
         setContextMenu(null);
     };
@@ -120,7 +141,6 @@ function TradesList() {
         };
     }, []);
 
-
     // Copy row text.
     const handleCopy = () => {
         if (contextMenu && contextMenu.trade) {
@@ -133,10 +153,16 @@ function TradesList() {
         handleCloseContextMenu();
     };
 
-    // Start editing the selected trade.
+    // Start editing - store the full trade object
     const handleEdit = () => {
         if (contextMenu && contextMenu.trade) {
-            setEditingTrade(contextMenu.trade);
+            // Ensure the trade object has owner/source IDs for the initial edit state
+            const tradeToEdit = {
+                ...contextMenu.trade,
+                tradeOwnerId: contextMenu.trade.owner?.id,
+                tradeSourceId: contextMenu.trade.source?.id
+            };
+            setEditingTrade(tradeToEdit);
         }
         handleCloseContextMenu();
     };
@@ -145,7 +171,7 @@ function TradesList() {
     const handleDelete = () => {
         if (contextMenu && contextMenu.trade) {
             const tradeId = contextMenu.trade.id;
-            fetch(`${process.env.REACT_APP_API_URL}/trades/${tradeId}`, {
+            fetch(`${API_URL}/trades/${tradeId}`, {
                 method: "DELETE",
             })
                 .then((res) => {
@@ -166,41 +192,101 @@ function TradesList() {
 
     // Handle changes in edit mode.
     const handleEditChange = (field, value) => {
-        setEditingTrade((prev) => ({...prev, [field]: value}));
+        setEditingTrade((prev) => {
+            const newState = { ...prev, [field]: value };
+            // Similar logic as TradeForm: if source changes, check/reset owner
+            if (field === 'tradeSourceId') {
+                const newSource = sources.find(s => s.id === parseInt(value, 10));
+                const currentOwnerIsValid = newSource?.owners?.some(o => o.id === prev.tradeOwnerId);
+                if (!currentOwnerIsValid) {
+                    newState.tradeOwnerId = newSource?.owners?.[0]?.id || "";
+                }
+            }
+            return newState;
+        });
     };
 
-    // Save updated trade.
+    // Get available owners for the source selected in the *editing* trade
+    const availableOwnersForEdit = useMemo(() => {
+        if (!editingTrade?.tradeSourceId || sources.length === 0) {
+            return [];
+        }
+        const selectedSource = sources.find(s => s.id === parseInt(editingTrade.tradeSourceId, 10));
+        return selectedSource?.owners || [];
+    }, [editingTrade?.tradeSourceId, sources]);
+
+    // Save updated trade - send IDs
     const handleSave = (tradeId) => {
-        fetch(`${process.env.REACT_APP_API_URL}/trades/${tradeId}`, {
+        // Construct payload with correct IDs and fields expected by backend
+        const payload = {
+            // Include all editable fields, ensure IDs are numbers
+            ticker: editingTrade.ticker,
+            transaction_type: editingTrade.transactionType,
+            quantity: parseFloat(editingTrade.quantity) || 0,
+            price_per_unit: parseFloat(editingTrade.pricePerUnit) || 0,
+            trade_date: editingTrade.tradeDate, // Assuming YYYY-MM-DD format or similar
+            trade_owner_id: parseInt(editingTrade.tradeOwnerId, 10),
+            trade_source_id: parseInt(editingTrade.tradeSourceId, 10),
+            // DO NOT send nested owner/source objects, only IDs
+        };
+
+        // Basic validation before sending
+        if (!payload.trade_owner_id || !payload.trade_source_id) {
+            showSnackbar("Owner and Source are required.", "error");
+            return;
+        }
+
+        fetch(`${API_URL}/trades/${tradeId}`, {
             method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(editingTrade),
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
         })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Update failed");
-                }
-                return res.json();
-            })
-            .then((data) => {
-                setTrades((prev) =>
-                    prev.map((t) => (t.id === tradeId ? {...t, ...editingTrade} : t))
-                );
-                setEditingTrade(null);
-                showSnackbar("Trade updated successfully", "success");
-            })
-            .catch((err) => {
-                console.error("Error updating trade:", err);
-                showSnackbar("Error updating trade", "error");
-            });
+        .then(async (res) => {
+            if (!res.ok) {
+                 const errorData = await res.json().catch(() => ({})); // Try to get error message
+                 throw new Error(errorData.error || `Update failed: ${res.status}`);
+            }
+            return res.json();
+        })
+        .then((data) => {
+            // Update the local state with the data returned from the API
+            // The API now returns the updated trade object nested under 'trade'
+            const updatedTradeFromServer = data.trade; // Adjust if key is different
+            if (!updatedTradeFromServer) {
+                throw new Error("Invalid response from server after update.");
+            }
+            setTrades((prev) =>
+                prev.map((t) => (t.id === tradeId ? updatedTradeFromServer : t))
+            );
+            setEditingTrade(null); // Exit edit mode
+            showSnackbar("Trade updated successfully", "success");
+        })
+        .catch((err) => {
+            console.error("Error updating trade:", err);
+            showSnackbar(`Error updating trade: ${err.message}`, "error");
+        });
     };
 
     // Cancel editing.
     const handleCancel = () => {
         setEditingTrade(null);
     };
+
+    // Define table columns
+    const columns = [
+        {key: "id", label: "ID", sortable: true},
+        {key: "ticker", label: "Ticker", sortable: true},
+        // Updated to display nested names
+        {key: "source", label: "Source", sortable: true, format: (trade) => trade.source?.name || "N/A"},
+        {key: "owner", label: "Owner", sortable: true, format: (trade) => trade.owner?.name || "N/A"},
+        {key: "transactionType", label: "Type", sortable: true},
+        {key: "quantity", label: "Quantity", sortable: true},
+        {key: "pricePerUnit", label: "Price", sortable: true, format: (trade) => `$${Number(trade.pricePerUnit).toFixed(2)}`},
+        {key: "tradeDate", label: "Trade Date", sortable: true, format: (trade) => new Date(trade.tradeDate).toLocaleDateString()},
+        {key: "createdAt", label: "Created At", sortable: true, format: (trade) => new Date(trade.createdAt).toLocaleString()},
+        {key: "updatedAt", label: "Updated At", sortable: true, format: (trade) => new Date(trade.updatedAt).toLocaleString()},
+        {key: "holdingId", label: "Holding ID", sortable: true},
+    ];
 
     return (
         <Box sx={{backgroundColor: colors.outerBackground, minHeight: "100vh", p: 2}}>
@@ -212,7 +298,7 @@ function TradesList() {
                 {/* Search and Options */}
                 <Box sx={{display: "flex", alignItems: "center", mb: 2, flexWrap: "wrap"}}>
                     <TextField
-                        label="Search by Ticker, Source, or Type"
+                        label="Search by Ticker, Source, or Owner"
                         variant="outlined"
                         fullWidth
                         sx={{
@@ -247,149 +333,116 @@ function TradesList() {
                 </Box>
 
                 <TableContainer component={Paper} sx={{backgroundColor: colors.background, color: colors.text}}>
-                    <Table>
+                    <Table size="small">
                         <TableHead>
                             <TableRow>
-                                {[
-                                    {key: "id", label: "ID"},
-                                    {key: "tradeType", label: "Trade Type"},
-                                    {key: "source", label: "Source"},
-                                    {key: "transactionType", label: "Transaction Type"},
-                                    {key: "ticker", label: "Ticker"},
-                                    {key: "quantity", label: "Quantity"},
-                                    {key: "pricePerUnit", label: "Price per Unit"},
-                                    {key: "tradeDate", label: "Date"},
-                                ].map(({key, label}) => (
-                                    <TableCell key={key} sx={{color: colors.text}}>
-                                        <TableSortLabel
-                                            active={sortConfig.key === key}
-                                            direction={sortConfig.key === key ? sortConfig.direction : "asc"}
-                                            onClick={() => handleSort(key)}
-                                        >
-                                            {label}
-                                        </TableSortLabel>
+                                {columns.map((col) => (
+                                    <TableCell key={col.key} sx={{color: colors.text}}>
+                                        {col.sortable ? (
+                                            <TableSortLabel
+                                                active={sortConfig.key === col.key}
+                                                direction={sortConfig.key === col.key ? sortConfig.direction : "asc"}
+                                                onClick={() => handleSort(col.key)}
+                                            >
+                                                {col.label}
+                                            </TableSortLabel>
+                                        ) : (
+                                            col.label
+                                        )}
                                     </TableCell>
                                 ))}
-                                {/* Extra column for actions when editing */}
-                                <TableCell sx={{color: colors.text}}></TableCell>
+                                <TableCell sx={{color: colors.text}}>Actions</TableCell> {/* Actions column for edit mode */}
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {filteredTrades.map((trade) => {
-                                const isEditing = editingTrade && editingTrade.id === trade.id;
-                                // Highlight the row if the trade is a sell and highlighting is enabled.
-                                const rowStyle =
-                                    highlightSell && trade.transactionType.toLowerCase() === "sell"
-                                        ? {backgroundColor: colors.highlight, "& td": {color: colors.text}}
-                                        : {"& td": {color: colors.text}};
-
+                                const isEditing = editingTrade?.id === trade.id;
                                 return (
                                     <TableRow
                                         key={trade.id}
-                                        sx={rowStyle}
-                                        onMouseDown={(e) => handleRightClick(e, trade)}
+                                        hover
+                                        onContextMenu={(e) => handleRightClick(e, trade)}
+                                        sx={{
+                                            cursor: "context-menu",
+                                            backgroundColor: isEditing ? colors.highlight :
+                                                (highlightSell && trade.transactionType === "Sell" ? colors.negative + '30' : undefined)
+                                        }}
                                     >
-                                        <TableCell>{trade.id}</TableCell>
-                                        <TableCell>
+                                        {columns.map((col) => (
+                                            <TableCell key={col.key} sx={{color: colors.text}}>
+                                                {isEditing ? (
+                                                    // --- EDIT MODE INPUTS ---
+                                                    col.key === 'owner' ? (
+                                                        <Select
+                                                            value={editingTrade.tradeOwnerId || ''}
+                                                            onChange={(e) => handleEditChange('tradeOwnerId', e.target.value)}
+                                                            size="small"
+                                                            sx={{ minWidth: 100, backgroundColor: 'white' }} // Basic styling
+                                                            disabled={!editingTrade.tradeSourceId || loadingOptions}
+                                                        >
+                                                            {availableOwnersForEdit.map(o => (
+                                                                <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    ) : col.key === 'source' ? (
+                                                          <Select
+                                                            value={editingTrade.tradeSourceId || ''}
+                                                            onChange={(e) => handleEditChange('tradeSourceId', e.target.value)}
+                                                            size="small"
+                                                            sx={{ minWidth: 100, backgroundColor: 'white' }}
+                                                            disabled={loadingOptions}
+                                                        >
+                                                            {sources.map(s => (
+                                                                <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    ) : col.key === 'transactionType' ? (
+                                                        <Select
+                                                            value={editingTrade.transactionType || ''}
+                                                            onChange={(e) => handleEditChange('transactionType', e.target.value)}
+                                                            size="small"
+                                                            sx={{ minWidth: 80, backgroundColor: 'white' }}
+                                                        >
+                                                            <MenuItem value="Buy">Buy</MenuItem>
+                                                            <MenuItem value="Sell">Sell</MenuItem>
+                                                        </Select>
+                                                    ) : col.key === 'tradeDate' ? (
+                                                        <TextField
+                                                            type="date"
+                                                            value={editingTrade[col.key]?.split('T')[0] || ''} // Format date
+                                                            onChange={(e) => handleEditChange(col.key, e.target.value)}
+                                                            size="small"
+                                                        />
+                                                    ) : [
+                                                        'ticker',
+                                                        'quantity',
+                                                        'pricePerUnit'
+                                                        // Add other editable fields here
+                                                    ].includes(col.key) ? (
+                                                        <TextField
+                                                            value={editingTrade[col.key] || ''}
+                                                            onChange={(e) => handleEditChange(col.key, e.target.value)}
+                                                            size="small"
+                                                            type={['quantity', 'pricePerUnit'].includes(col.key) ? 'number' : 'text'}
+                                                        />
+                                                    ) : (
+                                                         // Non-editable fields in edit mode
+                                                         col.format ? col.format(trade) : trade[col.key]
+                                                    )
+                                                ) : (
+                                                    // --- DISPLAY MODE ---
+                                                    col.format ? col.format(trade) : trade[col.key]
+                                                )}
+                                            </TableCell>
+                                        ))}
+                                        {/* Actions Cell */}
+                                        <TableCell sx={{color: colors.text}}>
                                             {isEditing ? (
-                                                <TextField
-                                                    value={editingTrade.tradeType}
-                                                    onChange={(e) => handleEditChange("tradeType", e.target.value)}
-                                                    size="small"
-                                                />
-                                            ) : (
-                                                trade.tradeType
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <TextField
-                                                    value={editingTrade.source}
-                                                    onChange={(e) => handleEditChange("source", e.target.value)}
-                                                    size="small"
-                                                />
-                                            ) : (
-                                                trade.source
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <TextField
-                                                    value={editingTrade.transactionType}
-                                                    onChange={(e) => handleEditChange("transactionType", e.target.value)}
-                                                    size="small"
-                                                />
-                                            ) : (
-                                                <span
-                                                    style={{
-                                                        color:
-                                                            trade.transactionType.toLowerCase() === "sell"
-                                                                ? colors.negative
-                                                                : colors.positive,
-                                                    }}
-                                                >
-                          {trade.transactionType}
-                        </span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <TextField
-                                                    value={editingTrade.ticker}
-                                                    onChange={(e) => handleEditChange("ticker", e.target.value)}
-                                                    size="small"
-                                                />
-                                            ) : (
-                                                trade.ticker
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <TextField
-                                                    type="number"
-                                                    value={editingTrade.quantity}
-                                                    onChange={(e) => handleEditChange("quantity", parseFloat(e.target.value))}
-                                                    size="small"
-                                                />
-                                            ) : (
-                                                trade.quantity
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <TextField
-                                                    type="number"
-                                                    value={editingTrade.pricePerUnit}
-                                                    onChange={(e) => handleEditChange("pricePerUnit", parseFloat(e.target.value))}
-                                                    size="small"
-                                                />
-                                            ) : (
-                                                trade.pricePerUnit
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing ? (
-                                                <TextField
-                                                    type="date"
-                                                    value={new Date(editingTrade.tradeDate).toISOString().split("T")[0]}
-                                                    onChange={(e) => handleEditChange("tradeDate", e.target.value)}
-                                                    size="small"
-                                                />
-                                            ) : (
-                                                new Date(trade.tradeDate).toLocaleDateString()
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isEditing && (
                                                 <>
-                                                    <IconButton onClick={() => handleSave(trade.id)} size="small">
-                                                        <SaveIcon/>
-                                                    </IconButton>
-                                                    <IconButton onClick={handleCancel} size="small">
-                                                        <CancelIcon/>
-                                                    </IconButton>
+                                                    <IconButton size="small" onClick={() => handleSave(trade.id)}><SaveIcon/></IconButton>
+                                                    <IconButton size="small" onClick={handleCancel}><CancelIcon/></IconButton>
                                                 </>
-                                            )}
+                                            ) : null} {/* Can add view/details icon here later */}
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -403,28 +456,24 @@ function TradesList() {
                     open={contextMenu !== null}
                     onClose={handleCloseContextMenu}
                     anchorReference="anchorPosition"
-                    anchorPosition={
-                        contextMenu !== null
-                            ? {top: contextMenu.mouseY, left: contextMenu.mouseX}
-                            : undefined
-                    }
+                    anchorPosition={contextMenu ? {top: contextMenu.mouseY, left: contextMenu.mouseX} : undefined}
                 >
-                    <MenuItem onClick={handleCopy}>Copy</MenuItem>
+                    <MenuItem onClick={handleCopy}>Copy Text</MenuItem>
                     <MenuItem onClick={handleEdit}>Edit</MenuItem>
-                    <MenuItem onClick={handleDelete}>Delete</MenuItem>
+                    <MenuItem onClick={handleDelete} sx={{color: 'red'}}>Delete</MenuItem>
                 </Menu>
 
-                {/* Snackbar Notification */}
-                <Snackbar
+                 {/* Snackbar for notifications */}
+                 <Snackbar
                     open={snackbar.open}
-                    autoHideDuration={4000}
+                    autoHideDuration={6000}
                     onClose={handleSnackbarClose}
-                    anchorOrigin={{vertical: "bottom", horizontal: "center"}}
-                >
-                    <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{width: "100%"}}>
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                 >
+                    <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
                         {snackbar.message}
                     </Alert>
-                </Snackbar>
+                 </Snackbar>
             </Container>
         </Box>
     );
