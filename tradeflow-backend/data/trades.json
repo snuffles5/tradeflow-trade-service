@@ -454,5 +454,53 @@
     "trade_type": "Personal",
     "transaction_type": "Buy",
     "updated_at": "03/16/2025"
+  },
+  {
+    "created_at": "04/06/2025",
+    "holding_id": 113,
+    "price_per_unit": "184.91",
+    "quantity": 2.0,
+    "source": "Interactive IL",
+    "ticker": "AMZN",
+    "trade_date": "03/31/2025",
+    "trade_type": "Daniel",
+    "transaction_type": "Sell",
+    "updated_at": "04/06/2025"
+  },
+  {
+    "created_at": "04/09/2025",
+    "holding_id": 123,
+    "price_per_unit": "58.00",
+    "quantity": 3.0,
+    "ticker": "LEU",
+    "trade_date": "04/07/2025",
+    "trade_owner": "Daniel",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Buy",
+    "updated_at": "04/09/2025"
+  },
+  {
+    "created_at": "04/09/2025",
+    "holding_id": 124,
+    "price_per_unit": "97.00",
+    "quantity": 3.0,
+    "ticker": "NVDA",
+    "trade_date": "04/07/2025",
+    "trade_owner": "Daniel",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Buy",
+    "updated_at": "04/09/2025"
+  },
+  {
+    "created_at": "04/09/2025",
+    "holding_id": 125,
+    "price_per_unit": "490.00",
+    "quantity": 27.0,
+    "ticker": "SPY",
+    "trade_date": "04/08/2025",
+    "trade_owner": "Shachar",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Buy",
+    "updated_at": "04/09/2025"
   }
 ]
