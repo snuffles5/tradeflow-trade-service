@@ -1,6 +1,7 @@
 # services/db_queries.py
 from app.models import Trade
 from app.models import UnrealizedHolding
+from sqlalchemy.orm import joinedload
 from utils.service_response import ServiceResponse
 
 
@@ -26,7 +27,14 @@ def get_trade_by_id(trade_id):
 
 def get_all_holdings():
     try:
-        holdings = UnrealizedHolding.query.filter(Trade.deleted_at.is_(None)).all()
+        holdings = (
+            UnrealizedHolding.query.options(
+                joinedload(UnrealizedHolding.owner),
+                joinedload(UnrealizedHolding.source),
+            )
+            .filter(UnrealizedHolding.deleted_at.is_(None))
+            .all()
+        )
         return ServiceResponse.success_response(holdings)
     except Exception as e:
         return ServiceResponse.error_response(str(e), code=500)
@@ -46,12 +54,12 @@ def get_trades_by_holding_id(holding_id):
         return ServiceResponse.error_response(str(e), code=500)
 
 
-def get_active_holding(ticker, source, trade_type):
+def get_active_holding(ticker, trade_source_id, trade_owner_id):
     try:
         holding = UnrealizedHolding.query.filter_by(
             ticker=ticker,
-            source=source,
-            trade_type=trade_type,
+            trade_source_id=trade_source_id,
+            trade_owner_id=trade_owner_id,
             close_date=None,
             deleted_at=None,
         ).first()

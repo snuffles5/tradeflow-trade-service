@@ -10,20 +10,33 @@ from marshmallow import Schema
 from utils.logger import log
 
 
+class TradeOwnerSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.Str(required=True)
+
+
+class TradeSourceSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.Str(required=True)
+    owners = fields.Nested(TradeOwnerSchema, many=True, dump_only=True)
+
+
 class TradeSchema(Schema):
     id = fields.Int(dump_only=True)
-    trade_type = fields.Str(required=True)
-    source = fields.Str(required=True)
     transaction_type = fields.Str(required=True)
     ticker = fields.Str(required=True)
     quantity = fields.Float(required=True)
     price_per_unit = fields.Float(required=True)
-    trade_date = fields.DateTime(
-        format="%Y-%m-%d", missing=lambda: datetime.utcnow()
-    )  # Default to current UTC time
+    trade_date = fields.DateTime(format="%Y-%m-%d", missing=lambda: datetime.utcnow())
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
-    holding_id = fields.Int(allow_none=True)  # new foreign key
+    holding_id = fields.Int(allow_none=True)
+
+    trade_owner_id = fields.Int(required=True, load_only=True)
+    trade_source_id = fields.Int(required=True, load_only=True)
+
+    owner = fields.Nested(TradeOwnerSchema, dump_only=True)
+    source = fields.Nested(TradeSourceSchema, dump_only=True)
 
     @post_load
     def make_trade(self, data, **kwargs):
@@ -50,8 +63,13 @@ class LastPriceInfoSchema(Schema):
 class UnrealizedHoldingSchema(Schema):
     id = fields.Int(dump_only=True)
     ticker = fields.Str(required=True)
-    source = fields.Str(required=True)
-    trade_type = fields.Str(required=True)
+
+    trade_owner_id = fields.Int(dump_only=True)
+    trade_source_id = fields.Int(dump_only=True)
+
+    owner = fields.Nested(TradeOwnerSchema, dump_only=True)
+    source = fields.Nested(TradeSourceSchema, dump_only=True)
+
     net_quantity = fields.Float(required=True)
     average_cost = fields.Float(required=True)
     net_cost = fields.Float(required=True)
