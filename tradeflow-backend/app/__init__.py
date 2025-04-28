@@ -23,8 +23,15 @@ def create_app():
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # Enable CORS with restriction
-    CORS(app, resources={r"/api/*": {"origins": os.getenv("FRONTEND_URL", "*")}})
+    # Enable CORS, explicitly allowing the frontend development server
+    # You might keep the env var for production flexibility
+    allowed_origins = [os.getenv("FRONTEND_URL"), "http://localhost:3000"]
+    # Filter out None values in case FRONTEND_URL is not set
+    allowed_origins = [origin for origin in allowed_origins if origin]
+    if not allowed_origins:
+        allowed_origins = "*"  # Fallback if no origins are specified
+
+    CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
     # Initialize database
     db.init_app(app)
