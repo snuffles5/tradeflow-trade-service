@@ -2,6 +2,8 @@
 from datetime import datetime
 
 from app.database import db
+from app.models import TradeOwner
+from app.models import TradeSource
 from app.models import TradeTransactionType
 from app.models import UnrealizedHolding
 from exceptions import HoldingRetrievalError
@@ -32,9 +34,9 @@ def update_unrealized_holding(new_trade):
         effective_quantity = -abs(new_trade.quantity)
     trade_value = effective_quantity * new_trade.price_per_unit
 
-    # Use helper to get an active holding.
+    # Fetch active holding based on owner and source IDs from the trade object
     response = get_active_holding(
-        new_trade.ticker, new_trade.source, new_trade.trade_type
+        new_trade.ticker, new_trade.trade_source_id, new_trade.trade_owner_id
     )
     if not response.success:
         raise HoldingRetrievalError(response.error_message)
@@ -60,10 +62,11 @@ def update_unrealized_holding(new_trade):
             holding.average_cost = new_trade.price_per_unit
         db.session.add(holding)
     else:
+        # Create holding using owner and source IDs from the trade object
         holding = UnrealizedHolding(
             ticker=new_trade.ticker,
-            source=new_trade.source,
-            trade_type=new_trade.trade_type,
+            trade_source_id=new_trade.trade_source_id,
+            trade_owner_id=new_trade.trade_owner_id,
             net_quantity=effective_quantity,
             average_cost=new_trade.price_per_unit,
             net_cost=trade_value,
@@ -180,40 +183,106 @@ def recalc_unrealized_holding(holding):
     return holding
 
 
-def update_existing_trade(updated_trade):
+def update_existing_trade(updated_trade_data):
     """
     Update an existing trade and recalculate its associated unrealized holding.
 
-    This function fetches the original trade from the database, updates its details,
-    and then recalculates the holding based on all trades linked to it.
+    Args:
+        updated_trade_data (dict): Dictionary containing updated trade fields including
+                                   trade_id, trade_owner_id, trade_source_id, etc.
     """
-    response_trade = get_trade_by_id(updated_trade.id)
+    trade_id = updated_trade_data.get("id")
+    response_trade = get_trade_by_id(trade_id)
     if not response_trade.success:
-        log.error(f"Trade {updated_trade.id} not found for update.")
+        log.error(f"Trade {trade_id} not found for update.")
         raise TradeNotFoundException(response_trade.error_message)
     trade = response_trade.data
 
-    trade.quantity = updated_trade.quantity
-    trade.price_per_unit = updated_trade.price_per_unit
-    trade.trade_date = updated_trade.trade_date
-    trade.transaction_type = updated_trade.transaction_type
-    trade.ticker = updated_trade.ticker
-    trade.source = updated_trade.source
-    trade.trade_type = updated_trade.trade_type
+    old_holding_id = trade.holding_id  # Keep track of the old holding
+
+    # Validate owner and source IDs
+    new_owner_id = updated_trade_data.get("trade_owner_id")
+    new_source_id = updated_trade_data.get("trade_source_id")
+
+    owner = db.session.get(TradeOwner, new_owner_id)
+    source = db.session.get(TradeSource, new_source_id)
+
+    if not owner:
+        raise ValueError(f"TradeOwner with id {new_owner_id} not found")
+    if not source:
+        raise ValueError(f"TradeSource with id {new_source_id} not found")
+
+    # Validate association
+    if owner not in source.owners:
+        raise ValueError(
+            f"TradeOwner '{owner.name}' is not valid for TradeSource '{source.name}'"
+        )
+
+    # Update trade fields from the input dictionary
+    trade.quantity = updated_trade_data.get("quantity", trade.quantity)
+    trade.price_per_unit = updated_trade_data.get(
+        "price_per_unit", trade.price_per_unit
+    )
+    trade.trade_date = updated_trade_data.get("trade_date", trade.trade_date)
+    trade.transaction_type = updated_trade_data.get(
+        "transaction_type", trade.transaction_type
+    )
+    trade.ticker = updated_trade_data.get("ticker", trade.ticker)
+
+    # Update owner and source IDs
+    owner_changed = trade.trade_owner_id != new_owner_id
+    source_changed = trade.trade_source_id != new_source_id
+    ticker_changed = trade.ticker != updated_trade_data.get("ticker", trade.ticker)
+
+    trade.trade_owner_id = new_owner_id
+    trade.trade_source_id = new_source_id
+    # Update relationships too, for consistency within the session
+    trade.owner = owner
+    trade.source = source
 
     db.session.add(trade)
     db.session.flush()
 
-    response_holding = get_holding_by_id(trade.holding_id)
-    if response_holding.success:
-        holding = response_holding.data
-        recalc_unrealized_holding(holding)
-    else:
-        log.error(f"Holding {trade.holding_id} not found during update.")
+    # If key holding identifiers changed (owner, source, ticker), recalculate the OLD holding
+    # and then recalculate/create the NEW holding for the updated trade.
+    if owner_changed or source_changed or ticker_changed:
+        log.debug(
+            f"Owner/Source/Ticker changed for Trade {trade.id}. Recalculating old holding {old_holding_id}."
+        )
+        # Recalculate the original holding (if it exists)
+        response_old_holding = get_holding_by_id(old_holding_id)
+        if response_old_holding.success:
+            recalc_unrealized_holding(response_old_holding.data)
+        else:
+            log.warning(f"Old holding {old_holding_id} not found for recalculation.")
 
-    db.session.commit()
-    log.debug(f"Updated trade {trade.id} and recalculated holding {trade.holding_id}.")
-    return trade
+        # Process the updated trade as if it were new to find/create its correct holding
+        # This will assign the correct new holding_id to the trade object
+        log.debug(
+            f"Processing updated Trade {trade.id} to find/create its new holding."
+        )
+        process_new_trade(trade)
+        log.debug(
+            f"Updated Trade {trade.id} assigned to new/existing Holding {trade.holding_id}."
+        )
+
+    else:
+        # If only quantity/price/date changed, just recalculate the current holding
+        log.debug(
+            f"Recalculating current holding {trade.holding_id} for updated Trade {trade.id}."
+        )
+        response_current_holding = get_holding_by_id(trade.holding_id)
+        if response_current_holding.success:
+            recalc_unrealized_holding(response_current_holding.data)
+        else:
+            log.error(f"Holding {trade.holding_id} not found during update.")
+            # Optionally, treat as new if holding is missing?
+            # process_new_trade(trade)
+
+    # Commit happens after all recalculations within the calling route
+    # db.session.commit() # Moved commit to route handler
+    log.debug(f"Updated trade {trade.id}. Associated holding ID: {trade.holding_id}")
+    return trade  # Return the updated trade object
 
 
 def delete_trade(trade_to_delete):
