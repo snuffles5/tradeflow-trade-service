@@ -27,16 +27,15 @@ def get_trade_by_id(trade_id):
 
 def get_all_holdings():
     try:
-        holdings = (
-            UnrealizedHolding.query.options(
-                joinedload(UnrealizedHolding.owner),
-                joinedload(UnrealizedHolding.source),
-            )
-            .filter(UnrealizedHolding.deleted_at.is_(None))
-            .all()
-        )
+        # Fetch ALL holdings, including those that are closed (deleted_at is not None)
+        # The frontend will filter based on netQuantity and the selectedPositions state.
+        holdings = UnrealizedHolding.query.options(
+            joinedload(UnrealizedHolding.owner), joinedload(UnrealizedHolding.source)
+        ).all()  # Removed filter(UnrealizedHolding.deleted_at.is_(None))
         return ServiceResponse.success_response(holdings)
     except Exception as e:
+        # Log the exception for more details
+        # current_app.logger.error(f"Error in get_all_holdings: {str(e)}", exc_info=True)
         return ServiceResponse.error_response(str(e), code=500)
 
 

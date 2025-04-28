@@ -43,7 +43,10 @@ const useSortableData = (items, initialConfig = {key: "netQuantity", direction: 
     const [sortConfig, setSortConfig] = useState(initialConfig);
 
     const sortedItems = useMemo(() => {
-        const sortable = [...items];
+        // Ensure items is treated as an array, default to empty array if not iterable/array
+        const safeItems = Array.isArray(items) ? items : [];
+        const sortable = [...safeItems]; // Spread the guaranteed array
+
         if (sortConfig !== null) {
             sortable.sort((a, b) => {
                 let aValue, bValue;
@@ -272,35 +275,33 @@ function SummaryPage() {
         }, {})
     );
 
-    // Fetch holdings data on mount and aggregate metrics.
+    // Fetch ALL necessary data on mount
     useEffect(() => {
-        setLoading(true); // Start loading indicators
+        setLoading(true);
         setAggLoading(true);
 
-        fetch(`${process.env.REACT_APP_API_URL}/holdings`)
-            .then(res => res.ok ? res.json() : Promise.reject('Holdings fetch failed'))
-            .then((data) => {
-                setHoldingsData(data || []);
-                setLoading(false);
+        Promise.all([
+            fetch(`${process.env.REACT_APP_API_URL}/holdings`).then(res => {
+                if (!res.ok) return Promise.reject(`Holdings fetch failed: ${res.status}`);
+                return res.json();
+            }),
+            fetch(`${process.env.REACT_APP_API_URL}/holdings-summary`).then(res => {
+                 if (!res.ok) return Promise.reject(`Summary fetch failed: ${res.status}`);
+                 return res.json();
             })
-            .catch((err) => {
-                console.error("Error fetching holdings:", err);
-                // Show snackbar or error message
-                setLoading(false);
-            });
-
-        fetch(`${process.env.REACT_APP_API_URL}/holdings-summary`) // Fetch the updated summary endpoint
-            .then(res => res.ok ? res.json() : Promise.reject('Holdings summary fetch failed'))
-            .then((data) => {
-                setAggregateData(data); // Store the new structure { overall: {..}, netCashBreakdown: [...] }
-                setAggLoading(false);
-            })
-            .catch((err) => {
-                console.error("Error fetching holdings summary:", err);
-                // Show snackbar or error message
-                setAggLoading(false);
-            });
-    }, []); // Fetch only on mount
+        ])
+        .then(([holdingsDataFromApi, summaryDataFromApi]) => {
+            setHoldingsData(Array.isArray(holdingsDataFromApi) ? holdingsDataFromApi : []);
+            setAggregateData(summaryDataFromApi);
+        })
+        .catch((err) => {
+            console.error("Error fetching initial page data:", err);
+        })
+        .finally(() => {
+            setLoading(false);
+            setAggLoading(false);
+        });
+    }, []);
 
     // Auto-refresh if enabled.
     useEffect(() => {
@@ -380,29 +381,33 @@ function SummaryPage() {
     // Filter holdings based on search input and selected position status.
     const filteredData = useMemo(() => {
         const searchTerms = search.toLowerCase().split(" ").filter((term) => term);
-        return sortedData.filter((holding) => {
+        const results = sortedData.filter((holding) => {
             const tradeSourceValue = `${holding.source?.name || ""} ${holding.owner?.name || ""}`.toLowerCase();
             const matchesSearch = searchTerms.every(
                 (term) =>
                     holding.ticker.toLowerCase().includes(term) || tradeSourceValue.includes(term)
             );
-            const isOpen = holding.netQuantity !== 0;
-            const isClosed = holding.netQuantity === 0;
+
+            const netQty = Number(holding.netQuantity);
+            const isOpen = !isNaN(netQty) && netQty !== 0;
+            const isClosed = !isNaN(netQty) && netQty === 0;
+
             const includeHolding =
                 (selectedPositions.includes("open") && isOpen) ||
                 (selectedPositions.includes("closed") && isClosed);
+
             return matchesSearch && includeHolding;
         });
+        return results;
     }, [sortedData, search, selectedPositions]);
 
     // Calculate totals based on FILTERED data.
     const filteredTotals = useMemo(
-        () =>
-            filteredData.reduce(
+        () => {
+            const totals = filteredData.reduce(
                 (acc, holding) => {
                     acc.netQuantity += Number(holding.netQuantity) || 0;
                     acc.netCost += Number(holding.netCost) || 0;
-                    // Use the profit value calculated earlier (might be null/0 for open)
                     acc.profit += holding.profit != null && !Number.isNaN(Number(holding.profit)) ? Number(holding.profit) : 0;
                     acc.tradeCount += Number(holding.tradeCount) || 0;
                     acc.currentMarketValue += (
@@ -410,7 +415,6 @@ function SummaryPage() {
                             ? holding.netQuantity * holding.currentPrice
                             : 0
                     );
-                    // Calculate Change Today total based on filtered data
                     acc.changeToday += holding.changeToday != null && !Number.isNaN(Number(holding.changeToday)) ? Number(holding.changeToday) : 0;
                     return acc;
                 },
@@ -420,9 +424,17 @@ function SummaryPage() {
                     profit: 0,
                     tradeCount: 0,
                     currentMarketValue: 0,
-                    changeToday: 0 // Initialize changeToday sum
+                    changeToday: 0
                 }
-            ),
+            );
+
+            // Calculate percentage based on the accumulated totals
+            totals.changeTodayPercentage = totals.netCost !== 0
+                ? (totals.changeToday / totals.netCost) * 100
+                : null; // Or 0 if preferred when netCost is zero
+
+            return totals;
+        },
         [filteredData] // Dependency is the filtered data
     );
 
@@ -739,16 +751,22 @@ function SummaryPage() {
                                                 <span
                                                     style={{color: filteredTotals.profit >= 0 ? colors.positive : colors.negative}}
                                                 >
-                          ${formatNumber(filteredTotals.profit)}
-                        </span>
+                                                    ${formatNumber(filteredTotals.profit)}
+                                                </span>
                                             );
                                         } else if (col.key === "changeToday") {
-                                            // Use the changeToday calculated from filteredTotals
                                             cellContent = (
                                                  <span style={{color: filteredTotals.changeToday >= 0 ? colors.positive : colors.negative}}>
                                                     ${formatNumber(filteredTotals.changeToday)}
                                                 </span>
                                             );
+                                        } else if (col.key === "changeTodayPercentage") {
+                                             // Display the calculated percentage for the filtered data
+                                             cellContent = filteredTotals.changeTodayPercentage != null ? (
+                                                <span style={{color: filteredTotals.changeTodayPercentage >= 0 ? colors.positive : colors.negative}}>
+                                                    {formatNumber(filteredTotals.changeTodayPercentage)}%
+                                                </span>
+                                            ) : "N/A";
                                         } else if (index === 0) {
                                             cellContent = "Total:";
                                         }

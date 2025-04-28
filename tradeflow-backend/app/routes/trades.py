@@ -193,29 +193,32 @@ def list_trades():
 def list_holdings():
     """
     Fetches all unrealized holdings, includes nested owner/source.
-    TEMP: Simplified logic to isolate 500 error.
+    (Reverted to previous simplified version for debugging)
     """
     with current_app.app_context():
         response = get_all_holdings()
         if not response.success:
             current_app.logger.error(
                 f"Holding retrieval failed: {response.error_message}"
-            )  # Log error
+            )
             raise HoldingRetrievalError(response.error_message)
         holdings = response.data
+
+        # Ensure holdings is a list (though get_all_holdings should return one)
+        if not isinstance(holdings, list):
+            log.warning(
+                f"get_all_holdings did not return a list. Type: {type(holdings)}. Wrapping in list."
+            )
+            holdings = [holdings] if holdings else []
+
         results = []
         holding_schema = UnrealizedHoldingSchema()
 
         for h in holdings:
             try:
-                # Dump basic holding data using schema
                 holding_dict_snake = holding_schema.dump(h)
-
-                # Fetch trades just for the count for now
                 response_trades = get_trades_by_holding_id(h.id)
                 holding_trades = response_trades.data if response_trades.success else []
-
-                # Add trade count and period (ensure get_holding_period is safe)
                 holding_dict_snake["trade_count"] = len(holding_trades)
                 try:
                     holding_dict_snake["holding_period"] = get_holding_period(h)
@@ -224,26 +227,21 @@ def list_holdings():
                         f"Error calculating holding period for {h.id}: {period_err}",
                         exc_info=True,
                     )
-                    holding_dict_snake[
-                        "holding_period"
-                    ] = None  # Assign default on error
+                    holding_dict_snake["holding_period"] = None
 
-                # Remove profit fields potentially added by schema (if any)
+                # Temporarily remove profit calculation again
                 holding_dict_snake.pop("profit", None)
                 holding_dict_snake.pop("profit_percentage", None)
 
                 results.append(dict_keys_to_camel(holding_dict_snake))
             except Exception as loop_err:
-                # Log the specific holding ID and error if dumping/processing fails
                 current_app.logger.error(
                     f"Error processing holding ID {h.id}: {str(loop_err)}",
                     exc_info=True,
                 )
-                # Optionally skip this holding or return an error response
-                # return jsonify({"error": f"Failed processing holding {h.id}"}), 500
-                continue  # Skip problematic holding for now
+                continue
 
-        current_app.logger.info("Fetched all holdings (simplified).")
+        # Reverted: Removed logging before return
         return jsonify(results), 200
 
 

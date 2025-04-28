@@ -49,7 +49,8 @@ function TradesList() {
         border: darkMode ? "white" : "black",
         positive: darkMode ? "#90ee90" : "green",
         negative: darkMode ? "#ff7f7f" : "red",
-        highlight: darkMode ? "#675723" : "#fff5c5",
+        highlight: darkMode ? "#675723" : "#fff5c5", // General highlight
+        sellHighlight: darkMode ? colors.negative + '40' : '#ffdddd', // Specific light red for sell highlight
         outerBackground: darkMode ? "#222" : "inherit",
     };
 
@@ -365,7 +366,7 @@ function TradesList() {
                                         sx={{
                                             cursor: "context-menu",
                                             backgroundColor: isEditing ? colors.highlight :
-                                                (highlightSell && trade.transactionType === "Sell" ? colors.negative + '30' : undefined)
+                                                (highlightSell && trade.transactionType === "Sell" ? colors.sellHighlight : undefined)
                                         }}
                                     >
                                         {columns.map((col) => (
