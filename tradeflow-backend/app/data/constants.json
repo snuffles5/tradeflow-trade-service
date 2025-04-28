@@ -1,0 +1,15 @@
+{
+  "TradeSource": {
+    "INTERACTIVE_BROKERS": "Interactive IL",
+    "ONE_ZERO": "One Zero"
+  },
+  "TradeTransactionType": {
+    "BUY": "Buy",
+    "SELL": "Sell"
+  },
+  "TradeType": {
+    "DANIEL": "Daniel",
+    "JOINT": "Joint",
+    "SHACHAR": "Shachar"
+  }
+}
