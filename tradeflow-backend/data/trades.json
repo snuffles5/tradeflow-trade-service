@@ -502,5 +502,89 @@
     "trade_source": "Interactive IL",
     "transaction_type": "Buy",
     "updated_at": "04/09/2025"
+  },
+  {
+    "created_at": "04/29/2025",
+    "holding_id": 126,
+    "price_per_unit": "46.85",
+    "quantity": 3.6,
+    "ticker": "TQQQ",
+    "trade_date": "04/16/2025",
+    "trade_owner": "Daniel",
+    "trade_source": "Blink",
+    "transaction_type": "Buy",
+    "updated_at": "04/29/2025"
+  },
+  {
+    "created_at": "04/29/2025",
+    "holding_id": 127,
+    "price_per_unit": "47.73",
+    "quantity": 2.0953,
+    "ticker": "IBIT",
+    "trade_date": "04/11/2025",
+    "trade_owner": "Daniel",
+    "trade_source": "Blink",
+    "transaction_type": "Buy",
+    "updated_at": "04/29/2025"
+  },
+  {
+    "created_at": "04/29/2025",
+    "holding_id": 128,
+    "price_per_unit": "109.80",
+    "quantity": 0.1821,
+    "ticker": "AMD",
+    "trade_date": "03/24/2025",
+    "trade_owner": "Daniel",
+    "trade_source": "Blink",
+    "transaction_type": "Buy",
+    "updated_at": "04/29/2025"
+  },
+  {
+    "created_at": "04/29/2025",
+    "holding_id": 114,
+    "price_per_unit": "604.57",
+    "quantity": 1.12,
+    "ticker": "SPY",
+    "trade_date": "10/02/2025",
+    "trade_owner": "Joint",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Buy",
+    "updated_at": "04/29/2025"
+  },
+  {
+    "created_at": "04/29/2025",
+    "holding_id": 114,
+    "price_per_unit": "604.57",
+    "quantity": 1.12,
+    "ticker": "SPY",
+    "trade_date": "02/10/2025",
+    "trade_owner": "Joint",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Buy",
+    "updated_at": "04/29/2025"
+  },
+  {
+    "created_at": "04/29/2025",
+    "holding_id": 114,
+    "price_per_unit": "563.85",
+    "quantity": 1.2,
+    "ticker": "SPY",
+    "trade_date": "03/10/2025",
+    "trade_owner": "Joint",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Buy",
+    "updated_at": "04/29/2025"
+  },
+  {
+    "created_at": "04/29/2025",
+    "holding_id": 114,
+    "price_per_unit": "523.63",
+    "quantity": 1.29,
+    "ticker": "SPY",
+    "trade_date": "04/10/2025",
+    "trade_owner": "Joint",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Buy",
+    "updated_at": "04/29/2025"
   }
 ]
