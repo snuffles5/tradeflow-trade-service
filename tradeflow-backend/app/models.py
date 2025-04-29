@@ -1,6 +1,7 @@
 # app/models.py
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 from app import db
 
@@ -122,28 +123,25 @@ class Trade(SoftDeleteMixin, db.Model):
         return data
 
 
-class LastPriceInfo(SoftDeleteMixin, db.Model):
+class LastPriceInfo(db.Model):
     __tablename__ = "last_price_info"
 
     id = db.Column(db.Integer, primary_key=True)
-    ticker = db.Column(db.String(10), nullable=False)
-    last_fetched_price = db.Column(db.Float, nullable=False)
-    last_closed_price = db.Column(db.Float, nullable=True)
-    source = db.Column(
-        db.String(100), nullable=False
-    )  # NOTE: This 'source' refers to price data source, not trade source. Keep as is.
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
-    # Optional technical indicators (ATR, SMA, RSI)
-    atr = db.Column(db.Float, nullable=True)
-    sma = db.Column(db.Float, nullable=True)
-    rsi = db.Column(db.Float, nullable=True)
+    ticker = db.Column(db.String(20), unique=True, nullable=False, index=True)
+    last_price = db.Column(db.Float, nullable=True)
+    change_today = db.Column(db.Float, nullable=True)
+    change_today_percentage = db.Column(db.Float, nullable=True)
+    # Stores the market identifier hint, e.g., 'NYSE', 'NASDAQ', 'NYSEAMERICAN'
+    market_identifier = db.Column(db.String(50), nullable=True)
+    # Stores the source provider, e.g., 'google', 'yahoo'
+    provider_source = db.Column(db.String(50), nullable=True)
+    # Timestamp of the last successful update
+    last_updated = db.Column(db.DateTime(timezone=True), nullable=True)
 
     def __repr__(self):
-        return f"<LastPriceInfo {self.ticker} {self.last_fetched_price} from {self.source}>"
-
-    def to_dict(self):
-        return {col.name: getattr(self, col.name) for col in self.__table__.columns}
+        return (
+            f"<LastPriceInfo {self.ticker} - {self.last_price} @ {self.last_updated}>"
+        )
 
 
 class UnrealizedHolding(SoftDeleteMixin, db.Model):
@@ -221,6 +219,11 @@ class Stock:
     change_today: float
     change_today_percentage: float
     last_updated: datetime
+    # Add fields returned by providers
+    market_identifier: Optional[
+        str
+    ]  # From which exchange/market the data came (e.g., NYSE, NASDAQ)
+    provider_name: str  # Which provider sourced the data (e.g., google, yahoo)
 
 
 # Keep Transaction Type constants here for now, or move to a dedicated table later if needed

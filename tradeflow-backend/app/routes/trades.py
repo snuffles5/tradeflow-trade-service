@@ -1,8 +1,12 @@
 import json
 import os
 from collections import defaultdict
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 
 from app.database import db
+from app.models import LastPriceInfo
 from app.models import Trade
 from app.models import TradeOwner
 from app.models import TradeSource
@@ -19,6 +23,7 @@ from flask import request
 from services.db_queries import get_active_trades
 from services.db_queries import get_all_holdings
 from services.db_queries import get_trade_by_id
+from services.providers.factory import CACHE_DURATION
 from services.providers.factory import ProviderFactory
 from services.trade_holdings import get_holding_period
 from services.trade_holdings import process_new_trade
@@ -33,7 +38,12 @@ from utils.text_utils import dict_keys_to_snake
 trades_bp = Blueprint("trades_bp", __name__)
 
 # Instantiate the price provider (with 5 minutes caching)
-provider_factory = ProviderFactory(cache_duration=300)
+provider_factory = ProviderFactory(cache_duration=CACHE_DURATION)
+
+# Define cache threshold for the route-level DB cache
+ROUTE_CACHE_THRESHOLD = timedelta(
+    minutes=CACHE_DURATION / 60
+)  # Convert seconds to minutes
 
 
 def save_to_file(new_trade):
@@ -301,29 +311,133 @@ def holdings_summary():
 
 @trades_bp.route("/stock-info/<ticker>", methods=["GET"])
 def get_stock_info(ticker):
-    current_app.logger.debug(f"Received request for /stock-info/{ticker}")
-    # Use the provider_factory, not the non-existent service
+    ticker = ticker.upper()  # Standardize ticker
+    log.debug(f"Received request for /stock-info/{ticker}")
+
+    # 1. Check DB Cache (LastPriceInfo table)
+    cached_info = db.session.query(LastPriceInfo).filter_by(ticker=ticker).first()
+    now = datetime.now(timezone.utc)  # Use timezone-aware datetime
+
+    if cached_info and cached_info.last_updated:
+        # Ensure last_updated is timezone-aware for comparison
+        # It *should* be timezone-aware now if we always write UTC
+        last_updated_aware = cached_info.last_updated
+        if last_updated_aware.tzinfo is None:
+            # If somehow still naive, assume UTC (fallback)
+            log.warning(f"last_updated for {ticker} was naive in DB, assuming UTC.")
+            last_updated_aware = last_updated_aware.replace(tzinfo=timezone.utc)
+
+        # Remove noisy debug logs for timestamps
+        # log.debug(f"Last updated for {ticker}: {last_updated_aware}")
+        # log.debug(f"now: {now}")
+        if (now - last_updated_aware) < ROUTE_CACHE_THRESHOLD:
+            log.debug(f"Cache hit for {ticker} in LastPriceInfo table.")
+            # Return cached data, converting keys to camelCase
+            cached_data = {
+                "ticker": cached_info.ticker,
+                "lastPrice": cached_info.last_price,
+                "changeToday": cached_info.change_today,
+                "changeTodayPercentage": cached_info.change_today_percentage,
+                "marketIdentifier": cached_info.market_identifier,
+                "providerSource": cached_info.provider_source,
+                "lastUpdated": cached_info.last_updated.isoformat(),  # Send as ISO string
+            }
+            return jsonify(dict_keys_to_camel(cached_data))
+        else:
+            log.debug(
+                f"Cache stale for {ticker}. Last updated: {cached_info.last_updated}"
+            )
+    else:
+        log.debug(f"Cache miss for {ticker} in LastPriceInfo table.")
+
+    # 2. Cache Miss or Stale: Fetch from provider
+    market_hint = cached_info.market_identifier if cached_info else None
+    provider_hint = cached_info.provider_source if cached_info else None
+    log.debug(
+        f"Fetching fresh data for {ticker} with market hint: {market_hint} from provider hint: {provider_hint}"
+    )
+
     try:
-        stock = provider_factory.get_stock(ticker)
+        # Pass both market and provider hints to the factory
+        stock = provider_factory.get_stock(
+            ticker, market_identifier=market_hint, provider_source_hint=provider_hint
+        )
+
         if stock:
-            # Return the structure expected by the frontend (lastPrice, etc.)
-            stock_data = {
+            log.debug(
+                f"Successfully fetched fresh data for {ticker} via provider: {stock.provider_name}"
+            )
+
+            # 3. Update DB Cache (Use merge for atomic insert/update)
+            # Merge the data: Inserts if ticker doesn't exist, updates if it does.
+            # Assumes 'ticker' is unique and acts like the key for finding existing rows.
+            # We query first to get the primary key (id) if it exists, or let merge create it.
+            existing_entry = (
+                db.session.query(LastPriceInfo).filter_by(ticker=ticker).first()
+            )
+            if existing_entry:
+                # Update existing entry's fields before merging to preserve the ID
+                existing_entry.last_price = stock.price
+                existing_entry.change_today = stock.change_today
+                existing_entry.change_today_percentage = stock.change_today_percentage
+                existing_entry.market_identifier = stock.market_identifier
+                existing_entry.provider_source = stock.provider_name
+                # Explicitly set last_updated to current UTC time
+                existing_entry.last_updated = now
+                # Merge will now ensure this state is saved for the existing ID
+                db.session.merge(existing_entry)
+                log.debug(f"Merging updated cache entry for {ticker}")
+            else:
+                # Create new cache entry object with explicit UTC timestamp
+                cache_entry_data = LastPriceInfo(
+                    ticker=ticker,
+                    last_price=stock.price,
+                    change_today=stock.change_today,
+                    change_today_percentage=stock.change_today_percentage,
+                    market_identifier=stock.market_identifier,
+                    provider_source=stock.provider_name,
+                    last_updated=now,  # Set timestamp explicitly
+                )
+                # Ticker doesn't exist, merge will insert the new object
+                db.session.merge(cache_entry_data)
+                log.debug(f"Merging new cache entry for {ticker}")
+
+            db.session.commit()
+            log.debug(f"Cache updated/merged for {ticker}")
+
+            # Return the newly fetched data, create the dict AFTER commit
+            # so the potentially DB-generated last_updated is available if needed.
+            # Re-fetch or assume now() is close enough for immediate response.
+            final_data_to_return = {
                 "ticker": ticker,
                 "lastPrice": stock.price,
                 "changeToday": stock.change_today,
                 "changeTodayPercentage": stock.change_today_percentage,
+                "marketIdentifier": stock.market_identifier,
+                "providerSource": stock.provider_name,
+                # Use the current time for the response, as the DB value
+                # might not be immediately reflected without a re-query.
+                "lastUpdated": now.isoformat(),
             }
-            current_app.logger.debug(f"Returning stock info for {ticker}: {stock_data}")
-            # Convert keys to camelCase for consistency
-            return jsonify(dict_keys_to_camel(stock_data))
+            return jsonify(dict_keys_to_camel(final_data_to_return))
         else:
-            current_app.logger.warning(f"No stock info found for {ticker} via provider")
-            return jsonify({"error": "Stock data not found"}), 404
+            # Provider returned None (e.g., ticker not found by provider)
+            log.warning(f"No stock info found for {ticker} via provider")
+            # Should we cache this failure? Maybe not, allow retries.
+            return jsonify({"error": "Stock data not found by provider"}), 404
+
     except Exception as e:
-        current_app.logger.error(
+        db.session.rollback()  # Rollback cache update attempt on error
+        log.error(
             f"Error fetching stock info for {ticker} via provider: {e}", exc_info=True
         )
-        return jsonify({"error": "Failed to fetch stock data"}), 500
+        # Return appropriate error response
+        if "not found" in str(e).lower():  # Basic error check
+            return (
+                jsonify({"error": f"Failed to get stock info for {ticker}: Not Found"}),
+                404,
+            )
+        return jsonify({"error": f"Failed to fetch stock data for {ticker}"}), 500
 
 
 @trades_bp.route("/trades/<int:trade_id>", methods=["PUT"])
