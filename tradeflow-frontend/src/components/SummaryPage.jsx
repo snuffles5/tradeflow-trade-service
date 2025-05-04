@@ -341,17 +341,56 @@ function SummaryPage() {
         });
     }, []);
 
-    // Auto-refresh if enabled.
+    // Auto-refresh logic
     useEffect(() => {
+        let intervalId;
         if (autoRefresh) {
-            const interval = setInterval(() => {
-                fetch(`${API_URL}/holdings`)
-                    .then((res) => res.json())
-                    .then(setHoldingsData)
-                    .catch((err) => console.error("Error fetching holdings:", err));
-            }, 60000);
-            return () => clearInterval(interval);
+            console.info("Auto-refresh enabled. Fetching data every 30 seconds.");
+            const fetchData = () => {
+                console.debug("Auto-refresh triggered: fetching /holdings and /holdings-summary");
+                // Fetch both holdings and summary data
+                Promise.all([
+                    fetch(`${API_URL}/holdings`).then(res => {
+                        if (!res.ok) return Promise.reject(`Holdings fetch failed: ${res.status}`);
+                        return res.json();
+                    }),
+                    fetch(`${API_URL}/holdings-summary`).then(res => {
+                        if (!res.ok) return Promise.reject(`Summary fetch failed: ${res.status}`);
+                        return res.json();
+                    })
+                ])
+                .then(([holdingsJson, summaryJson]) => {
+                    // Directly use the JSON data
+                    return [holdingsJson, summaryJson];
+                })
+                .then(([holdingsDataFromApi, summaryDataFromApi]) => {
+                    console.debug("Auto-refresh successful. Updating state.");
+                    // Add initial 'updating' state for frontend calculations
+                    const initialHoldings = (Array.isArray(holdingsDataFromApi) ? holdingsDataFromApi : []).map(h => ({ ...h, updating: false }));
+                    setHoldingsData(initialHoldings);
+                    // Update aggregate data as well
+                    setAggregateData(summaryDataFromApi);
+                    // Reset the flag to allow price updates for the new data
+                    setPriceUpdatesLaunched(false);
+                })
+                .catch(err => {
+                    console.error("Error during auto-refresh", err);
+                });
+            };
+
+            fetchData(); // Initial fetch on enable
+            intervalId = setInterval(fetchData, 30000); // 30 seconds
+        } else {
+            console.info("Auto-refresh disabled.");
         }
+
+        // Cleanup function to clear the interval when the component unmounts or autoRefresh changes
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+                console.debug("Cleared auto-refresh interval.");
+            }
+        };
     }, [autoRefresh]);
 
     // Restore useEffect for price updates
