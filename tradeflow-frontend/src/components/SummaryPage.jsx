@@ -927,7 +927,7 @@ function SummaryPage() {
                                             cellContent = `$${formatNumber(filteredTotals.netCost)}`;
                                         } else if (col.key === "currentMarketValue") {
                                             cellContent = `$${formatNumber(filteredTotals.currentMarketValue)}`;
-                                        } else if (col.key === "profit") {
+                                        } else if (col.key === "unrealizedPnl") {
                                             cellContent = (
                                                 <span style={{color: filteredTotals.profit >= 0 ? colors.positive : colors.negative}}>
                                                     ${formatNumber(filteredTotals.profit)}
