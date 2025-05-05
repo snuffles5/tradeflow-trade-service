@@ -177,6 +177,12 @@ class UnrealizedHolding(SoftDeleteMixin, db.Model):
     realized_pnl = db.Column(db.Float, nullable=True)
     realized_pnl_percentage = db.Column(db.Float, nullable=True)
 
+    # New fields for total calculation
+    total_buy_quantity = db.Column(db.Float, nullable=True, default=0)
+    total_buy_cost = db.Column(db.Float, nullable=True, default=0)
+    total_sell_quantity = db.Column(db.Float, nullable=True, default=0)
+    total_sell_value = db.Column(db.Float, nullable=True, default=0)
+
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )

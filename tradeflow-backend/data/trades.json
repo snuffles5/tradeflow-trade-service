@@ -610,5 +610,29 @@
     "trade_source": "Blink",
     "transaction_type": "Sell",
     "updated_at": "05/04/2025"
+  },
+  {
+    "created_at": "05/04/2025",
+    "holding_id": 120,
+    "price_per_unit": "74.19",
+    "quantity": 8.0,
+    "ticker": "VGK",
+    "trade_date": "05/02/2025",
+    "trade_owner": "Joint",
+    "trade_source": "Interactive IL",
+    "transaction_type": "Sell",
+    "updated_at": "05/04/2025"
+  },
+  {
+    "created_at": "05/05/2025",
+    "holding_id": 121,
+    "price_per_unit": "123.02",
+    "quantity": 1.0,
+    "ticker": "PLTR",
+    "trade_date": "05/05/2025",
+    "trade_owner": "Daniel",
+    "trade_source": "One Zero",
+    "transaction_type": "Sell",
+    "updated_at": "05/05/2025"
   }
 ]

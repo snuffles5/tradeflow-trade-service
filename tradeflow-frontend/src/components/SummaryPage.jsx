@@ -218,11 +218,13 @@ function SummaryPage() {
             sortValue: (row) => (row.netQuantity != null && row.currentPrice != null) ? (row.netQuantity * row.currentPrice) : (row.netQuantity === 0 ? 0 : null),
         },
         {
-            key: "profit",
-            label: "P/L",
-            defaultVisible: true,
+            key: "unrealizedPnl",
+            label: "Unrealized P/L",
+            defaultVisible: false,
             format: (row) => {
-                const pnl = row.netQuantity === 0 ? row.realizedPnl : row.profit; // Use realized if closed, else calculated
+                // *** Add Logging ***
+                console.log(`[${row.ticker}] Formatter Check (Unrealized P/L): updating=${row.updating}, netQuantity=${row.netQuantity}, Should Show Spinner: ${row.updating && row.netQuantity !== 0}`);
+                const pnl = row.unrealizedPnl;
                 return row.updating && row.netQuantity !== 0? (
                     <CircularProgress size={16}/>
                 ) : pnl != null ? (
@@ -234,14 +236,14 @@ function SummaryPage() {
                 )
             },
             sortable: true,
-            sortValue: (row) => row.netQuantity === 0 ? row.realizedPnl : row.profit,
+            sortValue: (row) => row.unrealizedPnl,
         },
         {
-            key: "profitPercentage",
-            label: "P/L %",
-            defaultVisible: true,
+            key: "unrealizedPnlPercentage",
+            label: "Unrealized P/L %",
+            defaultVisible: false,
             format: (row) => {
-                const pnlPerc = row.netQuantity === 0 ? row.realizedPnlPercentage : row.profitPercentage;
+                const pnlPerc = row.unrealizedPnlPercentage;
                  return row.updating && row.netQuantity !== 0 ? (
                     <CircularProgress size={16}/>
                 ) : pnlPerc != null ? (
@@ -253,10 +255,48 @@ function SummaryPage() {
                 )
             },
             sortable: true,
-            sortValue: (row) => row.netQuantity === 0 ? row.realizedPnlPercentage : row.profitPercentage,
+            sortValue: (row) => row.unrealizedPnlPercentage,
             footer: () => "",
         },
-         {
+        {
+            key: "totalProfit",
+            label: "Total Profit",
+            defaultVisible: true,
+            format: (row) => {
+                const pnl = row.totalProfit;
+                return row.updating && row.netQuantity !== 0 ? (
+                    <CircularProgress size={16}/>
+                ) : pnl != null ? (
+                    <span style={{color: pnl >= 0 ? colors.positive : colors.negative}}>
+                        ${formatNumber(pnl)}
+                    </span>
+                ) : (
+                    <span style={{color: "lightgray"}}>-</span>
+                )
+            },
+            sortable: true,
+            sortValue: (row) => row.totalProfit,
+        },
+        {
+            key: "totalProfitPercentage",
+            label: "Total Profit %",
+            defaultVisible: true,
+            format: (row) => {
+                const pnlPerc = row.totalProfitPercentage;
+                return row.updating && row.netQuantity !== 0 ? (
+                    <CircularProgress size={16}/>
+                ) : pnlPerc != null ? (
+                    <span style={{color: pnlPerc >= 0 ? colors.positive : colors.negative}}>
+                        {formatNumber(pnlPerc)}%
+                    </span>
+                ) : (
+                    <span style={{color: "lightgray"}}>-</span>
+                )
+            },
+            sortable: true,
+            sortValue: (row) => row.totalProfitPercentage,
+        },
+        {
             key: "changeToday",
             label: "Day Change",
             defaultVisible: true,
@@ -411,6 +451,8 @@ function SummaryPage() {
                     const newData = [...prev];
                     if (newData[index]) { // Check if index is still valid
                         newData[index] = { ...newData[index], updating: true };
+                        // *** Add Logging ***
+                        console.log(`[${holding.ticker}] Set updating = true`, newData[index]);
                     }
                     return newData;
                 });
@@ -422,12 +464,37 @@ function SummaryPage() {
                         const avgCost = holding.averageCost;
                         const netQty = holding.netQuantity;
                         const netCost = holding.netCost;
+                        // Data for total profit calculation (from /holdings endpoint)
+                        const totalBuyCost = holding.totalBuyCost;
+                        const totalSellValue = holding.totalSellValue;
 
                         // Calculate unrealized P/L based on fetched price
                         const unrealizedPnl = (lastPrice - avgCost) * netQty;
                         const unrealizedPnlPercentage = netCost && Math.abs(netCost) > 0.001
                             ? (unrealizedPnl / Math.abs(netCost)) * 100
                             : 0;
+
+                        // Calculate total profit based on fetched price and historical totals
+                        // Ensure totalBuyCost and totalSellValue are numbers, default to 0 if null/undefined
+                        const safeTotalBuyCost = Number(totalBuyCost) || 0;
+                        const safeTotalSellValue = Number(totalSellValue) || 0;
+                        const currentMarketValue = lastPrice * netQty;
+                        const totalProfit = (safeTotalSellValue + currentMarketValue) - safeTotalBuyCost;
+                        const totalProfitPercentage = safeTotalBuyCost && Math.abs(safeTotalBuyCost) > 0.001
+                            ? (totalProfit / safeTotalBuyCost) * 100
+                            : (totalProfit === 0 ? 0 : null); // Show 0% if profit is 0, else N/A if cost is 0
+
+                        // *** Add Detailed Logging Here ***
+                        console.log(`[${holding.ticker}] Price Update & Calc:
+  - Last Price: ${lastPrice}
+  - Net Qty: ${netQty}
+  - Avg Cost: ${avgCost}
+  - From API -> totalBuyCost: ${totalBuyCost}, totalSellValue: ${totalSellValue}
+  - Calculated -> safeTotalBuyCost: ${safeTotalBuyCost}, safeTotalSellValue: ${safeTotalSellValue}
+  - Calculated -> currentMarketValue: ${currentMarketValue}
+  - Calculated -> unrealizedPnl: ${unrealizedPnl}
+  - Calculated -> totalProfit: ${totalProfit}`);
+                        // *** End Logging ***
 
                         // Update the specific holding in the state
                         setHoldingsData((prev) => {
@@ -436,12 +503,16 @@ function SummaryPage() {
                                 newData[index] = {
                                     ...newData[index],
                                     currentPrice: lastPrice,
-                                    profit: unrealizedPnl, // Store calculated unrealized P/L
-                                    profitPercentage: unrealizedPnlPercentage,
+                                    unrealizedPnl: unrealizedPnl,
+                                    unrealizedPnlPercentage: unrealizedPnlPercentage,
+                                    totalProfit: totalProfit,
+                                    totalProfitPercentage: totalProfitPercentage,
                                     changeToday: changeToday, // Store change per share
                                     changeTodayPercentage: changeTodayPercentage,
                                     updating: false, // Mark as finished updating
                                 };
+                                // *** Add Logging ***
+                                console.log(`[${holding.ticker}] Set updating = false (Success)`, newData[index]);
                             }
                             return newData;
                         });
@@ -453,6 +524,8 @@ function SummaryPage() {
                             const newData = [...prev];
                             if (newData[index]) {
                                  newData[index] = { ...newData[index], updating: false };
+                                 // *** Add Logging ***
+                                 console.log(`[${holding.ticker}] Set updating = false (Error/Catch)`, newData[index]);
                             }
                             return newData;
                         });
@@ -463,11 +536,21 @@ function SummaryPage() {
                  setHoldingsData((prev) => {
                     const newData = [...prev];
                     if (newData[index]) {
+                        // *** Add Logging for Closed Positions ***
+                        console.log(`[${holding.ticker}] Closed Position Update:
+  - Using realizedPnl from API: ${holding.realizedPnl}
+  - Using realizedPnlPercentage from API: ${holding.realizedPnlPercentage}`);
+                        // *** End Logging ***
+
                         newData[index] = {
                             ...newData[index],
                             currentPrice: null,
-                            profit: holding.realizedPnl, // Use backend realized P/L
-                            profitPercentage: holding.realizedPnlPercentage,
+                            // unrealizedPnl: holding.realizedPnl, // For closed, unrealized is same as realized - SET TO NULL
+                            unrealizedPnl: null,
+                            // unrealizedPnlPercentage: holding.realizedPnlPercentage, // SET TO NULL
+                            unrealizedPnlPercentage: null,
+                            totalProfit: holding.realizedPnl, // For closed, total is same as realized
+                            totalProfitPercentage: holding.realizedPnlPercentage, // Use realized percentage
                             changeToday: null,
                             changeTodayPercentage: null,
                             updating: false,
@@ -511,25 +594,33 @@ function SummaryPage() {
             const totals = filteredData.reduce(
                 (acc, holding) => {
                     acc.netCost += Number(holding.netCost) || 0;
-                    // Use appropriate P/L based on status
-                    const pnl = holding.netQuantity === 0 ? holding.realizedPnl : holding.profit;
-                    acc.profit += pnl != null && !Number.isNaN(Number(pnl)) ? Number(pnl) : 0;
+                    // Sum unrealized P/L
+                    const unrealizedPnl = holding.unrealizedPnl;
+                    acc.profit += unrealizedPnl != null && !Number.isNaN(Number(unrealizedPnl)) ? Number(unrealizedPnl) : 0;
+                    // Add Summation for Total Profit
+                    const totalProfit = holding.totalProfit;
+                    acc.totalProfit += totalProfit != null && !Number.isNaN(Number(totalProfit)) ? Number(totalProfit) : 0;
+                    // Sum day change amount for open positions
+                    const dayChangeAmount = holding.netQuantity !== 0 && holding.changeToday != null ? (holding.changeToday * holding.netQuantity) : 0;
+                    acc.changeToday += dayChangeAmount != null && !Number.isNaN(Number(dayChangeAmount)) ? Number(dayChangeAmount) : 0;
                     // Use calculated market value
                     const marketValue = (holding.netQuantity != null && holding.currentPrice != null) ? (holding.netQuantity * holding.currentPrice) : (holding.netQuantity === 0 ? 0 : null);
                     acc.currentMarketValue += marketValue != null && !Number.isNaN(Number(marketValue)) ? Number(marketValue) : 0;
-                    // Sum day change for open positions
-                    const dayChangeAmount = holding.netQuantity !== 0 && holding.changeToday != null ? (holding.changeToday * holding.netQuantity) : 0;
-                    acc.changeToday += dayChangeAmount != null && !Number.isNaN(Number(dayChangeAmount)) ? Number(dayChangeAmount) : 0;
                     acc.tradeCount += Number(holding.tradeCount) || 0;
                     return acc;
                 },
-                { netCost: 0, profit: 0, currentMarketValue: 0, changeToday: 0, tradeCount: 0 }
+                { netCost: 0, profit: 0, totalProfit: 0, totalBuyCost: 0, currentMarketValue: 0, changeToday: 0, tradeCount: 0 }
             );
 
             // Calculate percentages based on the filtered totals
             totals.profitPercentage = totals.netCost !== 0
                 ? (totals.profit / Math.abs(totals.netCost)) * 100
                 : null;
+            // Calculate Total Profit %
+            totals.totalProfitPercentage = totals.totalBuyCost !== 0
+                ? (totals.totalProfit / totals.totalBuyCost) * 100
+                : (totals.totalProfit === 0 ? 0 : null); // Show 0% if profit is 0, else N/A if cost is 0
+
             totals.changeTodayPercentage = totals.netCost !== 0
                 ? (totals.changeToday / totals.netCost) * 100
                 : null;
@@ -545,11 +636,14 @@ function SummaryPage() {
             holdingsData.reduce( // Use holdingsData directly
                 (acc, holding) => {
                     acc.netCost += Number(holding.netCost) || 0;
-                    // Use appropriate P/L
-                    const pnl = holding.netQuantity === 0 ? holding.realizedPnl : holding.profit;
-                    acc.profit += pnl != null && !Number.isNaN(Number(pnl)) ? Number(pnl) : 0;
+                    // Sum unrealized P/L
+                    const unrealizedPnl = holding.unrealizedPnl;
+                    acc.profit += unrealizedPnl != null && !Number.isNaN(Number(unrealizedPnl)) ? Number(unrealizedPnl) : 0;
+                    // Add Summation for Total Profit
+                    const totalProfit = holding.totalProfit;
+                    acc.totalProfit += totalProfit != null && !Number.isNaN(Number(totalProfit)) ? Number(totalProfit) : 0;
                     // Sum day change amount for open positions
-                     const dayChangeAmount = holding.netQuantity !== 0 && holding.changeToday != null ? (holding.changeToday * holding.netQuantity) : 0;
+                    const dayChangeAmount = holding.netQuantity !== 0 && holding.changeToday != null ? (holding.changeToday * holding.netQuantity) : 0;
                     acc.changeToday += dayChangeAmount != null && !Number.isNaN(Number(dayChangeAmount)) ? Number(dayChangeAmount) : 0;
                     // Sum market value for open positions
                     if (holding.netQuantity !== 0) {
@@ -558,15 +652,15 @@ function SummaryPage() {
                     }
                     return acc;
                 },
-                {netCost: 0, profit: 0, changeToday: 0, currentMarketValue: 0}
+                {netCost: 0, profit: 0, totalProfit: 0, changeToday: 0, currentMarketValue: 0}
             ),
         [holdingsData] // Depends on the raw holdings data + calculated values
     );
 
     // Top summary box calculations based on OVERALL totals
-    const overallProfitPercentage =
+    const overallUnrealizedProfitPercentage =
         overallTotals.netCost !== 0 ? (overallTotals.profit / Math.abs(overallTotals.netCost)) * 100 : null;
-    const overallProfit = overallTotals.profit;
+    const overallUnrealizedProfit = overallTotals.profit;
     const overallChangeToday = overallTotals.changeToday;
     const overallChangeTodayPercentage =
         overallTotals.netCost !== 0 ? (overallChangeToday / overallTotals.netCost) * 100 : null;
@@ -652,15 +746,22 @@ function SummaryPage() {
                         >
                             <Typography variant="h6">Overall Performance</Typography>
                             <Typography variant="body1">
-                                Total P/L %:{" "}
-                                <span style={{color: overallProfitPercentage >= 0 ? colors.positive : colors.negative}}>
-                                    {formatNumber(overallProfitPercentage)}%
+                                Unrealized P/L %:{" "}
+                                <span style={{color: overallUnrealizedProfitPercentage >= 0 ? colors.positive : colors.negative}}>
+                                    {formatNumber(overallUnrealizedProfitPercentage)}%
                                 </span>
                             </Typography>
                             <Typography variant="body1">
-                                Total P/L:{" "}
-                                <span style={{color: overallProfit >= 0 ? colors.positive : colors.negative}}>
-                                     ${formatNumber(overallProfit)}
+                                Unrealized P/L:{" "}
+                                <span style={{color: overallUnrealizedProfit >= 0 ? colors.positive : colors.negative}}>
+                                     ${formatNumber(overallUnrealizedProfit)}
+                                </span>
+                            </Typography>
+                            <Typography variant="body1">
+                                Total Profit:{" "}
+                                <span style={{color: overallTotals.totalProfit >= 0 ? colors.positive : colors.negative}}>
+                                     {/* Check if totalProfit is valid before formatting */}
+                                     {overallTotals.totalProfit != null ? formatNumber(overallTotals.totalProfit) : "N/A"}
                                 </span>
                             </Typography>
                             <Typography variant="body1">
@@ -832,12 +933,24 @@ function SummaryPage() {
                                                     ${formatNumber(filteredTotals.profit)}
                                                 </span>
                                             );
-                                        } else if (col.key === "profitPercentage") {
-                                             cellContent = filteredTotals.profitPercentage != null ? (
+                                        } else if (col.key === "unrealizedPnlPercentage") {
+                                            cellContent = filteredTotals.profitPercentage != null ? (
                                                 <span style={{color: filteredTotals.profitPercentage >= 0 ? colors.positive : colors.negative}}>
                                                     {formatNumber(filteredTotals.profitPercentage)}%
                                                 </span>
                                             ) : "N/A";
+                                        } else if (col.key === "totalProfit") {
+                                            cellContent = (
+                                                <span style={{color: filteredTotals.totalProfit >= 0 ? colors.positive : colors.negative}}>
+                                                   ${formatNumber(filteredTotals.totalProfit)}
+                                               </span>
+                                            );
+                                        } else if (col.key === "totalProfitPercentage") {
+                                            cellContent = filteredTotals.totalProfitPercentage != null ? (
+                                               <span style={{color: filteredTotals.totalProfitPercentage >= 0 ? colors.positive : colors.negative}}>
+                                                   {formatNumber(filteredTotals.totalProfitPercentage)}%
+                                               </span>
+                                           ) : "N/A";
                                         } else if (col.key === "changeToday") {
                                             cellContent = (
                                                  <span style={{color: filteredTotals.changeToday >= 0 ? colors.positive : colors.negative}}>
@@ -845,17 +958,14 @@ function SummaryPage() {
                                                 </span>
                                             );
                                         } else if (col.key === "changeTodayPercentage") {
-                                             cellContent = filteredTotals.changeTodayPercentage != null ? (
+                                            cellContent = filteredTotals.changeTodayPercentage != null ? (
                                                 <span style={{color: filteredTotals.changeTodayPercentage >= 0 ? colors.positive : colors.negative}}>
                                                     {formatNumber(filteredTotals.changeTodayPercentage)}%
                                                 </span>
                                             ) : "N/A";
                                         } else if (col.key === "tradeCount") {
                                             cellContent = formatNumber(filteredTotals.tradeCount, 0);
-                                        }
-                                        // Add case for netQuantity if needed
-                                        // else if (col.key === "netQuantity") { ... }
-                                        else if (index === 0) { // First visible column
+                                        } else if (index === 0) { // First visible column
                                             cellContent = "Total:";
                                         }
                                         return (

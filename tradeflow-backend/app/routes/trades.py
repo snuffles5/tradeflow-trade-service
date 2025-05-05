@@ -243,6 +243,11 @@ def list_holdings():
                 "realizedPnlPercentage": holding.realized_pnl_percentage,
                 # Add latest trade price for reference (useful for closed positions)
                 "latestTradePrice": holding.latest_trade_price,
+                # Add new total fields needed for frontend calculation
+                "totalBuyQuantity": holding.total_buy_quantity,
+                "totalBuyCost": holding.total_buy_cost,
+                "totalSellQuantity": holding.total_sell_quantity,
+                "totalSellValue": holding.total_sell_value,
             }
             results.append(
                 dict_keys_to_camel(holding_data)
