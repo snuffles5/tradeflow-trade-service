@@ -9,3 +9,7 @@ ib_insync==0.9.84
 lxml==4.9.3
 beautifulsoup4==4.12.2
 requests==2.32.3
+gunicorn
+python-dotenv
+flask_sqlalchemy
+flask_cors
