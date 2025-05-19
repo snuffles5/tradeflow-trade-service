@@ -25,3 +25,4 @@ yarn-error.log*
 venv/
 /.idea/
 /tradeflow-frontend/node_modules/
+/tradeflow-frontend/build/
