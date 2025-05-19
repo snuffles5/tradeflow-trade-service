@@ -5,7 +5,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 
-from app.database import db
+from app import db
 from app.models import LastPriceInfo
 from app.models import Trade
 from app.models import TradeOwner
@@ -33,7 +33,6 @@ from utils.consts import TRADES_JSON_FILE_PATH
 from utils.logger import log
 from utils.text_utils import dict_keys_to_camel
 from utils.text_utils import dict_keys_to_snake
-
 
 trades_bp = Blueprint("trades_bp", __name__)
 
