@@ -1,16 +1,16 @@
 {
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.a6bf8a23.js"
+    "static/js/main.6d9cf361.js"
   ],
   "files": {
     "453.74a5cabd.chunk.js.map": "/tradeflow/static/js/453.74a5cabd.chunk.js.map",
     "732.d8ba95fa.chunk.js.map": "/tradeflow/static/js/732.d8ba95fa.chunk.js.map",
     "index.html": "/tradeflow/index.html",
-    "main.a6bf8a23.js.map": "/tradeflow/static/js/main.a6bf8a23.js.map",
+    "main.6d9cf361.js.map": "/tradeflow/static/js/main.6d9cf361.js.map",
     "main.css": "/tradeflow/static/css/main.e6c13ad2.css",
     "main.e6c13ad2.css.map": "/tradeflow/static/css/main.e6c13ad2.css.map",
-    "main.js": "/tradeflow/static/js/main.a6bf8a23.js",
+    "main.js": "/tradeflow/static/js/main.6d9cf361.js",
     "static/js/453.74a5cabd.chunk.js": "/tradeflow/static/js/453.74a5cabd.chunk.js",
     "static/js/732.d8ba95fa.chunk.js": "/tradeflow/static/js/732.d8ba95fa.chunk.js",
     "static/js/977.4bda12e5.chunk.js": "/tradeflow/static/js/977.4bda12e5.chunk.js"
