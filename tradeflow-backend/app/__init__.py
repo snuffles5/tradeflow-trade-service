@@ -22,7 +22,7 @@ def create_app():
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default_secret_key")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "SQLALCHEMY_DATABASE_URI",
-        "mysql://root:DanielEni1606!@localhost:3306/tradeflow",
+        "mysql://root:pass@localhost:3306/tradeflow",
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
