@@ -357,11 +357,11 @@ function SummaryPage() {
         setAggLoading(true);
 
         Promise.all([
-            fetch(`${API_URL}/holdings`).then(res => {
+            fetch(`${API_URL}/api/holdings`).then(res => {
                 if (!res.ok) return Promise.reject(`Holdings fetch failed: ${res.status}`);
                 return res.json();
             }),
-            fetch(`${API_URL}/holdings-summary`).then(res => {
+            fetch(`${API_URL}/api/holdings-summary`).then(res => {
                  if (!res.ok) return Promise.reject(`Summary fetch failed: ${res.status}`);
                  return res.json();
             })
@@ -390,11 +390,11 @@ function SummaryPage() {
                 console.debug("Auto-refresh triggered: fetching /holdings and /holdings-summary");
                 // Fetch both holdings and summary data
                 Promise.all([
-                    fetch(`${API_URL}/holdings`).then(res => {
+                    fetch(`${API_URL}/api/holdings`).then(res => {
                         if (!res.ok) return Promise.reject(`Holdings fetch failed: ${res.status}`);
                         return res.json();
                     }),
-                    fetch(`${API_URL}/holdings-summary`).then(res => {
+                    fetch(`${API_URL}/api/holdings-summary`).then(res => {
                         if (!res.ok) return Promise.reject(`Summary fetch failed: ${res.status}`);
                         return res.json();
                     })
@@ -457,7 +457,7 @@ function SummaryPage() {
                     return newData;
                 });
 
-                fetch(`${API_URL}/stock-info/${holding.ticker}`)
+                fetch(`${API_URL}/api/stock-info/${holding.ticker}`)
                     .then(res => res.ok ? res.json() : Promise.reject(`Stock info fetch failed for ${holding.ticker}`))
                     .then((data) => {
                         const { lastPrice, changeToday, changeTodayPercentage } = data;
