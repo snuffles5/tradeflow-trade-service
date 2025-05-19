@@ -13,3 +13,4 @@ gunicorn
 python-dotenv
 flask_sqlalchemy
 flask_cors
+psycopg2-binary
