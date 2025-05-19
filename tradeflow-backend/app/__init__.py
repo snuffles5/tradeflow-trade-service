@@ -13,6 +13,9 @@ from .routes.trades import trades_bp
 
 
 def create_app():
+    from dotenv import load_dotenv
+
+    load_dotenv("dev.env")
     app = Flask(__name__)
 
     # Configure secret key and database
