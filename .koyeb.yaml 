@@ -1,5 +1,0 @@
-name: tradeflow
-build:
-  root: tradeflow-backend
-  build_command: pip install -r requirements.txt
-  run_command: gunicorn -b 0.0.0.0:$PORT main:app
