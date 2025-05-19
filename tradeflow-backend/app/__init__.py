@@ -28,7 +28,8 @@ def create_app():
 
     # Enable CORS, explicitly allowing the frontend development server
     # You might keep the env var for production flexibility
-    allowed_origins = [os.getenv("FRONTEND_URL"), "http://localhost:3000"]
+    allowed_origins = ["https://snuffles5.github.io", "http://localhost:3000"]
+
     # Filter out None values in case FRONTEND_URL is not set
     allowed_origins = [origin for origin in allowed_origins if origin]
     if not allowed_origins:
