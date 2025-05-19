@@ -1,7 +1,7 @@
 # services/providers/retry_decorator.py
-import time
 import functools
 import logging
+import time
 
 
 def retry(exceptions, max_attempts=3, delay=1, backoff=2):
