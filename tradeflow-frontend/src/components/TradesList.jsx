@@ -67,9 +67,9 @@ function TradesList() {
     // Fetch trades, owners, and sources
     useEffect(() => {
         Promise.all([
-            fetch(`${API_URL}/api/trades`).then(res => res.ok ? res.json() : Promise.reject('Trades fetch failed')),
-            fetch(`${API_URL}/api/trade-owners`).then(res => res.ok ? res.json() : Promise.reject('Owners fetch failed')),
-            fetch(`${API_URL}/api/trade-sources`).then(res => res.ok ? res.json() : Promise.reject('Sources fetch failed')),
+            fetch(`${API_URL}/trades`).then(res => res.ok ? res.json() : Promise.reject('Trades fetch failed')),
+            fetch(`${API_URL}/trade-owners`).then(res => res.ok ? res.json() : Promise.reject('Owners fetch failed')),
+            fetch(`${API_URL}/trade-sources`).then(res => res.ok ? res.json() : Promise.reject('Sources fetch failed')),
         ])
         .then(([tradesData, ownersData, sourcesData]) => {
             setTrades(tradesData || []);
@@ -172,7 +172,7 @@ function TradesList() {
     const handleDelete = () => {
         if (contextMenu && contextMenu.trade) {
             const tradeId = contextMenu.trade.id;
-            fetch(`${API_URL}/api/trades/${tradeId}`, {
+            fetch(`${API_URL}/trades/${tradeId}`, {
                 method: "DELETE",
             })
                 .then((res) => {
@@ -237,7 +237,7 @@ function TradesList() {
             return;
         }
 
-        fetch(`${API_URL}/api/trades/${tradeId}`, {
+        fetch(`${API_URL}/trades/${tradeId}`, {
             method: "PUT",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload),

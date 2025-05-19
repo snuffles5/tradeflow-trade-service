@@ -46,8 +46,8 @@ function TradeForm() {
     // Fetch owners and sources on component mount
     useEffect(() => {
         Promise.all([
-            fetch(`${API_URL}/api/trade-owners`).then(res => res.ok ? res.json() : Promise.reject(`Owners fetch failed: ${res.status}`)),
-            fetch(`${API_URL}/api/trade-sources`).then(res => res.ok ? res.json() : Promise.reject(`Sources fetch failed: ${res.status}`))
+            fetch(`${API_URL}/trade-owners`).then(res => res.ok ? res.json() : Promise.reject(`Owners fetch failed: ${res.status}`)),
+            fetch(`${API_URL}/trade-sources`).then(res => res.ok ? res.json() : Promise.reject(`Sources fetch failed: ${res.status}`))
         ])
         .then(([ownersData, sourcesData]) => {
             setOwners(ownersData || []); // Ensure array even if API returns null/undefined
@@ -131,7 +131,7 @@ function TradeForm() {
 
         console.log("Submitting payload to:", `${API_URL}/trades`, ", payload: ", payload);
 
-        fetch(`${API_URL}/api/trades`, {
+        fetch(`${API_URL}/trades`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload),
