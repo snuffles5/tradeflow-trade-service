@@ -1,4 +1,4 @@
 name: tradeflow
 build:
   root: tradeflow-backend
-  run_command: gunicorn -b 0.0.0.0:$PORT main:app
+  run_command: gunicorn -b 0.0.0.0:$PORT app.main:app
