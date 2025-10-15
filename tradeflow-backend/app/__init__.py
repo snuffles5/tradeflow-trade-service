@@ -2,25 +2,54 @@
 import logging
 import os
 
+from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
 from flask_migrate import Migrate
 from sqlalchemy import inspect
 from utils.logger import log
 
+from .commands import register_commands
 from .database import db
 from .routes.trades import trades_bp
 
 
+def _build_database_uri():
+    explicit_uri = os.getenv("SQLALCHEMY_DATABASE_URI")
+    if explicit_uri:
+        return explicit_uri
+
+    db_user = os.getenv("DB_USER")
+    db_password = os.getenv("DB_PASSWORD")
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "3306")
+    db_name = os.getenv("DB_NAME")
+
+    check_values = {
+        "user": db_user,
+        "password": db_password,
+        "name": db_name,
+    }
+    if any(
+        value in {None, "", "root", "password", "changeme"}
+        for value in check_values.values()
+    ):
+        raise RuntimeError(
+            "Database configuration is not secure. "
+            "Set SQLALCHEMY_DATABASE_URI or non-default DB_USER/DB_PASSWORD/DB_NAME."
+        )
+
+    return f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
+
 def create_app():
+    load_dotenv()
+
     app = Flask(__name__)
 
     # Configure secret key and database
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default_secret_key")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-        "SQLALCHEMY_DATABASE_URI",
-        "mysql://root:DanielEni1606!@localhost:3306/tradeflow",
-    )
+    app.config["SQLALCHEMY_DATABASE_URI"] = _build_database_uri()
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # Enable CORS, explicitly allowing the frontend development server
@@ -48,6 +77,8 @@ def create_app():
 
     # Initialize Flask-Migrate
     Migrate(app, db)
+
+    register_commands(app)
 
     # Register blueprints
     app.register_blueprint(trades_bp, url_prefix="/api")

@@ -1,27 +1,40 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+tradeflow-frontend/node_modules/
+.pnp/
 .pnp.js
 
-# testing
-/coverage
+# Python
+venv/
+__pycache__/
+*.pyc
 
-# production
-/build
+# Build artifacts
+build/
+dist/
+*.egg-info/
 
-# misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-dev.env
-
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-venv/
-/.idea/
-/tradeflow-frontend/node_modules/
+*.log
+
+# IDE / Editor
+.idea/
+.vscode/
+
+# Environment files
+.env
+.env.*
+dev.env
+tradeflow-backend/.env
+tradeflow-backend/.env.*
+tradeflow-backend/dev.env
+
+# OS files
+.DS_Store
+
+# Flask instance & local databases
+tradeflow-backend/instance/
+*.sqlite3
