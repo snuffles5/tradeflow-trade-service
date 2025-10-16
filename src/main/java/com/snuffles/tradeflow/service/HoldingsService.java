@@ -1,4 +1,4 @@
-package src.main.java.com.snuffles.tradeflow.service;
+package com.snuffles.tradeflow.service;
 
 import com.snuffles.tradeflow.domain.Trade;
 import com.snuffles.tradeflow.domain.UnrealizedHolding;
