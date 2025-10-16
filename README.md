@@ -42,9 +42,9 @@ This is the Spring Boot backend for the TradeFlow application.
 
 4.  **Access the application**
 
-    The application will be available at `http://localhost:8080`.
+    The application will be available at `http://localhost:9090`.
 
-    You can view the API documentation at `http://localhost:8080/swagger-ui.html`.
+    You can view the API documentation at `http://localhost:9090/swagger-ui.html`.
 
 ## Running Tests
 
@@ -53,4 +53,20 @@ To run the tests, execute the following command:
 ```bash
 mvn test
 ```
+
+## Rebuild & Reload Stack
+
+Use the helper script in `scripts/tflow-rebuild.sh` to rebuild the project and restart containers:
+
+```bash
+./scripts/tflow-rebuild.sh
+```
+
+The script will:
+
+- __Clean & verify__: `mvn clean verify`
+- __Recycle containers__: `docker compose down`
+- __Rebuild & restart__: `docker compose up --build -d`
+
+Make sure Docker Desktop is running before executing.
 # tradeflow-trade-service

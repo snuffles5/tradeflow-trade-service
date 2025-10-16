@@ -24,7 +24,7 @@ services:
       - db
     restart: on-failure
     ports:
-      - "8080:8080"
+      - "9090:9090"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${DB_NAME}
       - SPRING_DATASOURCE_USERNAME=${DB_USER}

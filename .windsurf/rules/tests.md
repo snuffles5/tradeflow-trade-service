@@ -4,6 +4,13 @@ glob:
 description:
 ---
 
-# Windsurf Rules
-When editing a code, update the relevant test, create new cases if needed to cover the new cases and run the suite.
-When adding a code, create tests to fully cover and run the suite.
+* __Rules summary__  
+  Update or expand tests whenever existing code changes.  
+  Write comprehensive tests alongside any new code.  
+  Remove tests that no longer apply when code is deleted.
+
+* __Container reminder__  
+  After modifying code, run `tflow-rebuild` to execute:  
+  1. `mvn clean verify`  
+  2. `docker-compose up --build`
+

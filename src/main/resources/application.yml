@@ -19,7 +19,7 @@ flyway:
   locations: classpath:db/migration
 
 server:
-  port: 8080
+  port: 9090
 
 springdoc:
   swagger-ui:
