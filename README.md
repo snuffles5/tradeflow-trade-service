@@ -55,6 +55,41 @@ To run the tests, execute the following command:
 mvn test
 ```
 
+## Container Images & GHCR
+
+1.  **Local build**
+
+    Build the image with Docker when testing locally:
+
+    ```bash
+    docker build -t tradeflow-trade-service:local .
+    ```
+
+2.  **GitHub Actions workflows**
+
+    * __`docker-build.yml`__ (`.github/workflows/docker-build.yml`) verifies that the Docker image builds successfully on pushes and pull requests.
+    * __`build-push.yml`__ (`.github/workflows/build-push.yml`) builds and pushes the image to GHCR on pushes to `main`, tags starting with `v`, or manual dispatches. Images are tagged automatically from branch, tag, and commit SHA metadata.
+
+3.  **GHCR naming & authentication**
+
+    * Images are published to `ghcr.io/<github-owner>/tradeflow-trade-service` as required by GHCR naming conventions. By default the workflow uses the repository owner for the namespace.
+    * GitHub Actions authenticates with GHCR using `${{ secrets.GITHUB_TOKEN }}`—no Personal Access Token (PAT) is required.
+    * To pull from outside GitHub (for example on a production server), create a Classic PAT with `read:packages` (and `write:packages` if you also push). On the server, log in:
+
+      ```bash
+      echo YOUR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+      ```
+
+4.  **Pulling the image**
+
+    Once pushed, pull the image with:
+
+    ```bash
+    docker pull ghcr.io/<github-owner>/tradeflow-trade-service:<tag>
+    ```
+
+    Replace `<github-owner>` with your GitHub username or organization and `<tag>` with the desired tag (branch, tag, or SHA).
+
 ## Rebuild & Reload Stack
 
 Use the helper script in `scripts/tflow-rebuild.sh` to rebuild the project and restart containers:
