@@ -44,7 +44,8 @@ This is the Spring Boot backend for the TradeFlow application.
 
     The application will be available at `http://localhost:9090`.
 
-    You can view the API documentation at `http://localhost:9090/swagger-ui.html`.
+    * __Health check__: `http://localhost:9090/` or `http://localhost:9090/health`
+    * __API documentation__: `http://localhost:9090/swagger-ui.html`
 
 ## Running Tests
 
