@@ -18,24 +18,6 @@
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/27/2025",
-    "ticker": "GOOG",
-    "transaction_type": "Buy",
-    "quantity": 2,
-    "price_per_unit": 177.38,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "02/26/2025",
-    "ticker": "IWM",
-    "transaction_type": "Buy",
-    "quantity": 1,
-    "price_per_unit": 215,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
     "trade_date": "02/26/2025",
     "ticker": "TSLA",
     "transaction_type": "Buy",
@@ -90,24 +72,6 @@
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/24/2025",
-    "ticker": "IREN",
-    "transaction_type": "Sell",
-    "quantity": 15,
-    "price_per_unit": 12.00,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "02/24/2025",
-    "ticker": "TEM",
-    "transaction_type": "Sell",
-    "quantity": 3,
-    "price_per_unit": 70.51,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
     "trade_date": "02/21/2025",
     "ticker": "BNTX",
     "transaction_type": "Buy",
@@ -126,33 +90,6 @@
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/20/2025",
-    "ticker": "IWN",
-    "transaction_type": "Buy",
-    "quantity": 1,
-    "price_per_unit": 167.32,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "02/20/2025",
-    "ticker": "MDU",
-    "transaction_type": "Buy",
-    "quantity": 12,
-    "price_per_unit": 16.93,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "02/14/2025",
-    "ticker": "AAPL",
-    "transaction_type": "Buy",
-    "quantity": 1,
-    "price_per_unit": 235.98,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
     "trade_date": "02/10/2025",
     "ticker": "TSLA",
     "transaction_type": "Buy",
@@ -169,15 +106,6 @@
     "price_per_unit": 345.59,
     "owner": "Personal",
     "source": "Interactive IL"
-  },
-  {
-    "trade_date": "02/05/2025",
-    "ticker": "SPY",
-    "transaction_type": "Buy",
-    "quantity": 2,
-    "price_per_unit": 601.77,
-    "owner": "Personal",
-    "source": "One Zero"
   },
   {
     "trade_date": "01/27/2025",
@@ -225,42 +153,6 @@
     "source": "Interactive IL"
   },
   {
-    "trade_date": "01/24/2025",
-    "ticker": "IREN",
-    "transaction_type": "Buy",
-    "quantity": 15,
-    "price_per_unit": 12.17,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "01/24/2025",
-    "ticker": "BTCT",
-    "transaction_type": "Buy",
-    "quantity": 10,
-    "price_per_unit": 7.74,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "01/22/2025",
-    "ticker": "TEM",
-    "transaction_type": "Buy",
-    "quantity": 3,
-    "price_per_unit": 42.85,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "10/04/2024",
-    "ticker": "IONQ",
-    "transaction_type": "Buy",
-    "quantity": 4,
-    "price_per_unit": 9.12,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
     "trade_date": "03/03/2025",
     "ticker": "SPY",
     "transaction_type": "Buy",
@@ -306,42 +198,6 @@
     "source": "Interactive IL"
   },
   {
-    "trade_date": "03/05/2025",
-    "ticker": "PLTR",
-    "transaction_type": "Buy",
-    "quantity": 2.0,
-    "price_per_unit": 88.98,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "03/07/2025",
-    "ticker": "PLTR",
-    "transaction_type": "Buy",
-    "quantity": 1.0,
-    "price_per_unit": 80.20,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "03/12/2025",
-    "ticker": "IONQ",
-    "transaction_type": "Buy",
-    "quantity": 6.0,
-    "price_per_unit": 21.50,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
-    "trade_date": "03/12/2025",
-    "ticker": "IONQ",
-    "transaction_type": "Buy",
-    "quantity": 6.0,
-    "price_per_unit": 22.50,
-    "owner": "Personal",
-    "source": "One Zero"
-  },
-  {
     "trade_date": "03/31/2025",
     "ticker": "AMZN",
     "transaction_type": "Sell",
@@ -378,33 +234,6 @@
     "source": "Interactive IL"
   },
   {
-    "trade_date": "04/16/2025",
-    "ticker": "TQQQ",
-    "transaction_type": "Buy",
-    "quantity": 3.6,
-    "price_per_unit": 46.85,
-    "owner": "Personal",
-    "source": "Blink"
-  },
-  {
-    "trade_date": "04/11/2025",
-    "ticker": "IBIT",
-    "transaction_type": "Buy",
-    "quantity": 2.0953,
-    "price_per_unit": 47.73,
-    "owner": "Personal",
-    "source": "Blink"
-  },
-  {
-    "trade_date": "03/24/2025",
-    "ticker": "AMD",
-    "transaction_type": "Buy",
-    "quantity": 0.1821,
-    "price_per_unit": 109.80,
-    "owner": "Personal",
-    "source": "Blink"
-  },
-  {
     "trade_date": "02/10/2025",
     "ticker": "SPY",
     "transaction_type": "Buy",
@@ -432,24 +261,6 @@
     "source": "Interactive IL"
   },
   {
-    "trade_date": "04/30/2025",
-    "ticker": "AMD",
-    "transaction_type": "Sell",
-    "quantity": 0.1821,
-    "price_per_unit": 16.85,
-    "owner": "Personal",
-    "source": "Blink"
-  },
-  {
-    "trade_deate": "04/30/2025",
-    "ticker": "TQQQ",
-    "transaction_type": "Sell",
-    "quantity": 3.6,
-    "price_per_unit": 51.83,
-    "owner": "Personal",
-    "source": "Blink"
-  },
-  {
     "trade_date": "05/02/2025",
     "ticker": "VGK",
     "transaction_type": "Sell",
@@ -457,14 +268,5 @@
     "price_per_unit": 74.19,
     "owner": "Joint",
     "source": "Interactive IL"
-  },
-  {
-    "trade_date": "05/05/2025",
-    "ticker": "PLTR",
-    "transaction_type": "Sell",
-    "quantity": 1.0,
-    "price_per_unit": 123.02,
-    "owner": "Personal",
-    "source": "One Zero"
   }
 ]
