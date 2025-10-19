@@ -12,7 +12,7 @@ This is the Spring Boot backend for the TradeFlow application.
 
 1.  **Create a `.env` file**
 
-    Copy the contents of `.env.example` to a new file named `.env` and fill in the values for your local environment.
+    Copy the contents of `.env.example` to a new file named `.env` and fill in the values for your local environment. The sample file contains the database credentials required by `docker-compose.yml` and by Spring Boot when running locally without Docker.
 
 2.  **Build the application**
 
@@ -84,7 +84,7 @@ If connection fails, verify the containers are up (`docker compose ps`) and no o
 
 ## Seed Data
 
-`DataSeedingService` (`src/main/java/com/snuffles/tradeflow/seeding/DataSeedingService.java`) runs automatically on application startup. It loads `src/test/resources/seed-data.json` and inserts owners, sources, and trades through `TradeService` when the database is empty (`trade_owner` table count is zero).
+`DataSeedingService` (`src/main/java/com/snuffles/tradeflow/seeding/DataSeedingService.java`) runs automatically on application startup. It loads `src/main/resources/seed-data.json` and inserts owners, sources, and trades through `TradeService` when the database is empty (`trade_owner` table count is zero).
 
 * If the database already contains owners, seeding is skipped. To force reseeding, stop the stack and remove the database volume: `docker compose down -v && ./scripts/tflow-rebuild.sh`.
 * Adjust seed data by editing `seed-data.json`; keep dates in `MM/dd/yyyy` format.
