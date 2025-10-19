@@ -347,7 +347,7 @@
     "transaction_type": "Sell",
     "quantity": 2.0,
     "price_per_unit": 184.91,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Interactive IL"
   },
   {
@@ -356,7 +356,7 @@
     "transaction_type": "Buy",
     "quantity": 3.0,
     "price_per_unit": 58.00,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Interactive IL"
   },
   {
@@ -365,7 +365,7 @@
     "transaction_type": "Buy",
     "quantity": 3.0,
     "price_per_unit": 97.00,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Interactive IL"
   },
   {
@@ -383,7 +383,7 @@
     "transaction_type": "Buy",
     "quantity": 3.6,
     "price_per_unit": 46.85,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Blink"
   },
   {
@@ -392,7 +392,7 @@
     "transaction_type": "Buy",
     "quantity": 2.0953,
     "price_per_unit": 47.73,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Blink"
   },
   {
@@ -401,7 +401,7 @@
     "transaction_type": "Buy",
     "quantity": 0.1821,
     "price_per_unit": 109.80,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Blink"
   },
   {
@@ -446,7 +446,7 @@
     "transaction_type": "Sell",
     "quantity": 0.1821,
     "price_per_unit": 16.85,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Blink"
   },
   {
@@ -455,7 +455,7 @@
     "transaction_type": "Sell",
     "quantity": 3.6,
     "price_per_unit": 51.83,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "Blink"
   },
   {
@@ -473,7 +473,7 @@
     "transaction_type": "Sell",
     "quantity": 1.0,
     "price_per_unit": 123.02,
-    "owner": "Daniel",
+    "owner": "Personal",
     "source": "One Zero"
   }
 ]

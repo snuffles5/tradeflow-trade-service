@@ -69,4 +69,24 @@ The script will:
 - __Rebuild & restart__: `docker compose up --build -d`
 
 Make sure Docker Desktop is running before executing.
+
+## Database Access
+
+Use the credentials in `.env` to connect from IntelliJ/Datagrip or any MySQL client while the Docker compose stack is running:
+
+* __Host__: `127.0.0.1`
+* __Port__: value of `DB_PORT` (default `3306`)
+* __Database__: value of `DB_NAME`
+* __User__: value of `DB_USER` (default `admin@snuffles.com`)
+* __Password__: value of `DB_PASSWORD`
+
+If connection fails, verify the containers are up (`docker compose ps`) and no other MySQL instance is bound to the same port. You can also connect as root with the password in `DB_ROOT_PASSWORD` when needed.
+
+## Seed Data
+
+`DataSeedingService` (`src/main/java/com/snuffles/tradeflow/seeding/DataSeedingService.java`) runs automatically on application startup. It loads `src/test/resources/seed-data.json` and inserts owners, sources, and trades through `TradeService` when the database is empty (`trade_owner` table count is zero).
+
+* If the database already contains owners, seeding is skipped. To force reseeding, stop the stack and remove the database volume: `docker compose down -v && ./scripts/tflow-rebuild.sh`.
+* Adjust seed data by editing `seed-data.json`; keep dates in `MM/dd/yyyy` format.
+* For production deployments, gate the seeder behind an environment profile or disable it entirely.
 # tradeflow-trade-service
