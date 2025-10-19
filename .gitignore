@@ -23,6 +23,7 @@ out/
 .env
 .env.*
 dev.env
+!.env.example
 tradeflow-backend/.env
 tradeflow-backend/.env.*
 tradeflow-backend/dev.env
