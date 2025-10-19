@@ -405,15 +405,6 @@
     "source": "Blink"
   },
   {
-    "trade_date": "10/02/2025",
-    "ticker": "SPY",
-    "transaction_type": "Buy",
-    "quantity": 1.12,
-    "price_per_unit": 604.57,
-    "owner": "Joint",
-    "source": "Interactive IL"
-  },
-  {
     "trade_date": "02/10/2025",
     "ticker": "SPY",
     "transaction_type": "Buy",
