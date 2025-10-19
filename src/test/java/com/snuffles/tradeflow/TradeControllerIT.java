@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,7 +37,7 @@ public class TradeControllerIT extends ITBase {
         tradeDto.setTransactionType(com.snuffles.tradeflow.domain.Trade.TransactionType.Buy);
         tradeDto.setQuantity(new BigDecimal("10"));
         tradeDto.setPricePerUnit(new BigDecimal("150.00"));
-        tradeDto.setTradeDate(LocalDate.now());
+        tradeDto.setTradeDate(Instant.parse("2024-01-01T00:00:00Z"));
         tradeDto.setTradeOwnerId(ownerId);
         tradeDto.setTradeSourceId(sourceId);
 

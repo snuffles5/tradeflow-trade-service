@@ -19,7 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,7 +72,7 @@ class TradeServiceTest {
         tradeDto.setTicker("AAPL");
         tradeDto.setQuantity(new BigDecimal("10"));
         tradeDto.setPricePerUnit(new BigDecimal("150"));
-        tradeDto.setTradeDate(LocalDate.now());
+        tradeDto.setTradeDate(Instant.parse("2024-01-01T00:00:00Z"));
         tradeDto.setTradeOwnerId(1L);
         tradeDto.setTradeSourceId(2L);
 
@@ -199,7 +199,7 @@ class TradeServiceTest {
         existingTrade.setTicker("AAPL");
         existingTrade.setQuantity(new BigDecimal("5"));
         existingTrade.setPricePerUnit(new BigDecimal("120"));
-        existingTrade.setTradeDate(LocalDate.now().minusDays(1));
+        existingTrade.setTradeDate(Instant.parse("2024-01-01T00:00:00Z"));
         existingTrade.setOwner(owner);
         existingTrade.setSource(source);
 
@@ -212,7 +212,7 @@ class TradeServiceTest {
         updateDto.setTicker("AAPL");
         updateDto.setQuantity(new BigDecimal("3"));
         updateDto.setPricePerUnit(new BigDecimal("130"));
-        updateDto.setTradeDate(LocalDate.now());
+        updateDto.setTradeDate(Instant.parse("2024-01-02T00:00:00Z"));
         updateDto.setTradeOwnerId(1L);
         updateDto.setTradeSourceId(2L);
 
@@ -248,7 +248,7 @@ class TradeServiceTest {
         existingTrade.setTicker("AAPL");
         existingTrade.setQuantity(new BigDecimal("5"));
         existingTrade.setPricePerUnit(new BigDecimal("120"));
-        existingTrade.setTradeDate(LocalDate.now().minusDays(2));
+        existingTrade.setTradeDate(Instant.parse("2024-01-01T00:00:00Z"));
         existingTrade.setOwner(owner);
         existingTrade.setSource(source);
 
@@ -270,7 +270,7 @@ class TradeServiceTest {
         updateDto.setTicker("MSFT");
         updateDto.setQuantity(new BigDecimal("8"));
         updateDto.setPricePerUnit(new BigDecimal("250"));
-        updateDto.setTradeDate(LocalDate.now());
+        updateDto.setTradeDate(Instant.parse("2024-01-03T00:00:00Z"));
         updateDto.setTradeOwnerId(3L);
         updateDto.setTradeSourceId(4L);
 

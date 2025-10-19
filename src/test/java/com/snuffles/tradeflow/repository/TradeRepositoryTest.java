@@ -13,7 +13,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,8 +72,8 @@ class TradeRepositoryTest {
         List<Trade> trades = tradeRepository.findByHoldingIdOrderByTradeDateAsc(holding.getId());
 
         assertThat(trades).hasSize(2);
-        assertThat(trades.get(0).getTradeDate()).isEqualTo(LocalDate.of(2024, 1, 1));
-        assertThat(trades.get(1).getTradeDate()).isEqualTo(LocalDate.of(2024, 2, 1));
+        assertThat(trades.get(0).getTradeDate()).isEqualTo(LocalDate.of(2024, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant());
+        assertThat(trades.get(1).getTradeDate()).isEqualTo(LocalDate.of(2024, 2, 1).atStartOfDay(ZoneOffset.UTC).toInstant());
     }
 
     private Trade createTrade(TradeOwner owner, TradeSource source, UnrealizedHolding holding, LocalDate tradeDate, BigDecimal quantity) {
@@ -80,7 +82,7 @@ class TradeRepositoryTest {
         trade.setTicker("AAPL");
         trade.setQuantity(quantity);
         trade.setPricePerUnit(new BigDecimal("100"));
-        trade.setTradeDate(tradeDate);
+        trade.setTradeDate(tradeDate.atStartOfDay(ZoneOffset.UTC).toInstant());
         trade.setOwner(owner);
         trade.setSource(source);
         trade.setHolding(holding);

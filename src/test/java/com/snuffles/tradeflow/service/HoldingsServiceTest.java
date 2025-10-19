@@ -18,7 +18,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,7 +74,7 @@ class HoldingsServiceTest {
         assertThat(saved.getTicker()).isEqualTo("AAPL");
         assertThat(saved.getOwner()).isEqualTo(owner);
         assertThat(saved.getSource()).isEqualTo(source);
-        assertThat(saved.getOpenDate()).isEqualTo(trade.getTradeDate());
+        assertThat(saved.getOpenDate()).isEqualTo(trade.getTradeDate().atZone(ZoneOffset.UTC).toLocalDate());
         assertThat(saved.getTotalBuyQuantity()).isEqualByComparingTo(new BigDecimal("10"));
         assertThat(saved.getTotalBuyCost()).isEqualByComparingTo(new BigDecimal("1000"));
         assertThat(saved.getAverageCost()).isEqualByComparingTo(new BigDecimal("100.0000"));
@@ -204,7 +206,7 @@ class HoldingsServiceTest {
         trade.setTicker("AAPL");
         trade.setQuantity(quantity);
         trade.setPricePerUnit(price);
-        trade.setTradeDate(LocalDate.now());
+        trade.setTradeDate(Instant.parse("2024-01-01T00:00:00Z"));
         trade.setOwner(owner);
         trade.setSource(source);
         return trade;

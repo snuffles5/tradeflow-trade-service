@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Instant;
 
 @Data
 public class TradeDto {
@@ -29,7 +29,7 @@ public class TradeDto {
     private BigDecimal pricePerUnit;
 
     @NotNull
-    private LocalDate tradeDate;
+    private Instant tradeDate;
 
     @NotNull
     private Long tradeOwnerId;
@@ -38,6 +38,8 @@ public class TradeDto {
     private Long tradeSourceId;
 
     private Long holdingId;
+    private Instant createdAt;
+    private Instant updatedAt;
     private TradeOwnerDto owner;
     private TradeSourceDto source;
 }

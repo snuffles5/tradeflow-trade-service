@@ -14,7 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -52,7 +52,7 @@ class TradeControllerTest {
         request.setTicker("AAPL");
         request.setQuantity(new BigDecimal("10"));
         request.setPricePerUnit(new BigDecimal("150"));
-        request.setTradeDate(LocalDate.of(2024, 1, 1));
+        request.setTradeDate(Instant.parse("2024-01-01T00:00:00Z"));
         request.setTradeOwnerId(1L);
         request.setTradeSourceId(2L);
 
@@ -90,7 +90,7 @@ class TradeControllerTest {
         request.setTicker("AAPL");
         request.setQuantity(new BigDecimal("5"));
         request.setPricePerUnit(new BigDecimal("200"));
-        request.setTradeDate(LocalDate.of(2024, 1, 2));
+        request.setTradeDate(Instant.parse("2024-01-02T00:00:00Z"));
         request.setTradeOwnerId(1L);
         request.setTradeSourceId(2L);
 
@@ -132,7 +132,7 @@ class TradeControllerTest {
         invalid.setTicker("AAPL");
         invalid.setQuantity(new BigDecimal("-1"));
         invalid.setPricePerUnit(new BigDecimal("0"));
-        invalid.setTradeDate(LocalDate.of(2024, 1, 1));
+        invalid.setTradeDate(Instant.parse("2024-01-01T00:00:00Z"));
         invalid.setTradeOwnerId(1L);
         invalid.setTradeSourceId(2L);
 

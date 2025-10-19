@@ -8,7 +8,6 @@ import org.hibernate.annotations.Where;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -32,7 +31,7 @@ public class Trade extends BaseEntity {
     private BigDecimal pricePerUnit;
 
     @Column(name = "trade_date", nullable = false)
-    private LocalDate tradeDate;
+    private Instant tradeDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trade_owner_id", nullable = false)

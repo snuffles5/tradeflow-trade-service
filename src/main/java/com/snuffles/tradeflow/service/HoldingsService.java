@@ -13,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -62,7 +64,7 @@ public class HoldingsService {
         holding.setTicker(trade.getTicker());
         holding.setOwner(trade.getOwner());
         holding.setSource(trade.getSource());
-        holding.setOpenDate(trade.getTradeDate());
+        holding.setOpenDate(toUtcDate(trade.getTradeDate()));
         resetHolding(holding);
         return holding;
     }
@@ -104,7 +106,7 @@ public class HoldingsService {
         holding.setNetCost(holding.getTotalBuyCost().subtract(holding.getTotalSellValue()));
 
         if (netQuantity.compareTo(BigDecimal.ZERO) == 0) {
-            holding.setCloseDate(trade.getTradeDate());
+            holding.setCloseDate(toUtcDate(trade.getTradeDate()));
             BigDecimal realizedPnl = holding.getTotalSellValue().subtract(holding.getTotalBuyCost());
             holding.setRealizedPnl(realizedPnl);
             if (holding.getTotalBuyCost().compareTo(BigDecimal.ZERO) > 0) {
@@ -123,7 +125,7 @@ public class HoldingsService {
 
     private UnrealizedHoldingDto toDto(UnrealizedHolding holding) {
         UnrealizedHoldingDto dto = holdingMapper.toDto(holding);
-        dto.setHoldingPeriod(ChronoUnit.DAYS.between(holding.getOpenDate(), holding.getCloseDate() != null ? holding.getCloseDate() : LocalDate.now()));
+        dto.setHoldingPeriod(ChronoUnit.DAYS.between(holding.getOpenDate(), holding.getCloseDate() != null ? holding.getCloseDate() : LocalDate.now(ZoneOffset.UTC)));
         dto.setTradeCount(tradeRepository.findByHoldingIdOrderByTradeDateAsc(holding.getId()).size());
         dto.setStatus(holding.getNetQuantity().compareTo(BigDecimal.ZERO) == 0 ? "closed" : "open");
         return dto;
@@ -144,5 +146,9 @@ public class HoldingsService {
         }
 
         return new HoldingsSummaryDto(new HoldingsSummaryDto.OverallSummaryDto(totalNetCost), breakdown);
+    }
+
+    private LocalDate toUtcDate(Instant instant) {
+        return instant == null ? null : instant.atZone(ZoneOffset.UTC).toLocalDate();
     }
 }

@@ -19,9 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -59,7 +61,7 @@ public class DataSeedingService implements ApplicationRunner {
             seedData.stream()
                 .filter(Objects::nonNull)
                 .filter(this::isValidRecord)
-                .sorted(Comparator.comparing(this::parseTradeDate))
+                .sorted(Comparator.comparing(this::parseTradeInstant))
                 .forEach(this::persistRecord);
 
             log.info("Data seeding completed successfully.");
@@ -75,7 +77,7 @@ public class DataSeedingService implements ApplicationRunner {
         }
 
         try {
-            parseTradeDate(record);
+            parseTradeInstant(record);
         } catch (DateTimeParseException ex) {
             log.warn("Skipping seed row with invalid date '{}': {}", record.tradeDate(), record);
             return false;
@@ -121,12 +123,13 @@ public class DataSeedingService implements ApplicationRunner {
         return true;
     }
 
-    private LocalDate parseTradeDate(SeedTradeRecord record) {
-        return LocalDate.parse(record.tradeDate(), SEED_DATE_FORMATTER);
+    private Instant parseTradeInstant(SeedTradeRecord record) {
+        LocalDate localDate = LocalDate.parse(record.tradeDate(), SEED_DATE_FORMATTER);
+        return localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
     }
 
     private void persistRecord(SeedTradeRecord record) {
-        LocalDate tradeDate = parseTradeDate(record);
+        Instant tradeDate = parseTradeInstant(record);
 
         TradeOwner owner = tradeOwnerRepository.findByName(record.owner())
             .orElseGet(() -> {

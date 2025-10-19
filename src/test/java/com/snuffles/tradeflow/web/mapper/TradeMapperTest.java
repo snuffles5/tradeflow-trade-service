@@ -13,7 +13,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,9 +44,14 @@ class TradeMapperTest {
         trade.setTicker("AAPL");
         trade.setQuantity(new BigDecimal("5"));
         trade.setPricePerUnit(new BigDecimal("150"));
-        trade.setTradeDate(LocalDate.of(2024, 1, 1));
+        Instant tradeDate = Instant.parse("2024-01-01T00:00:00Z");
+        Instant createdAt = Instant.parse("2024-01-02T00:00:00Z");
+        Instant updatedAt = Instant.parse("2024-01-03T00:00:00Z");
+        trade.setTradeDate(tradeDate);
         trade.setOwner(owner);
         trade.setSource(source);
+        trade.setCreatedAt(createdAt);
+        trade.setUpdatedAt(updatedAt);
 
         TradeDto dto = tradeMapper.toDto(trade);
 
@@ -54,6 +59,9 @@ class TradeMapperTest {
         assertThat(dto.getTransactionType()).isEqualTo(Trade.TransactionType.Buy);
         assertThat(dto.getTradeOwnerId()).isEqualTo(1L);
         assertThat(dto.getTradeSourceId()).isEqualTo(2L);
+        assertThat(dto.getTradeDate()).isEqualTo(tradeDate);
+        assertThat(dto.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(dto.getUpdatedAt()).isEqualTo(updatedAt);
         assertThat(dto.getOwner()).isNotNull();
         assertThat(dto.getOwner().getName()).isEqualTo("Alice");
         assertThat(dto.getSource()).isNotNull();
@@ -76,11 +84,11 @@ class TradeMapperTest {
         dto.setTicker("MSFT");
         dto.setQuantity(new BigDecimal("3"));
         dto.setPricePerUnit(new BigDecimal("200"));
-        dto.setTradeDate(LocalDate.of(2024, 2, 2));
         dto.setTradeOwnerId(1L);
         dto.setTradeSourceId(2L);
         dto.setOwner(ownerDto);
         dto.setSource(sourceDto);
+        dto.setTradeDate(Instant.parse("2024-02-02T00:00:00Z"));
 
         Trade entity = tradeMapper.toEntity(dto);
 
@@ -89,9 +97,11 @@ class TradeMapperTest {
         assertThat(entity.getTicker()).isEqualTo("MSFT");
         assertThat(entity.getQuantity()).isEqualByComparingTo(new BigDecimal("3"));
         assertThat(entity.getPricePerUnit()).isEqualByComparingTo(new BigDecimal("200"));
-        assertThat(entity.getTradeDate()).isEqualTo(LocalDate.of(2024, 2, 2));
+        assertThat(entity.getTradeDate()).isEqualTo(Instant.parse("2024-02-02T00:00:00Z"));
         assertThat(entity.getOwner()).isNull();
         assertThat(entity.getSource()).isNull();
         assertThat(entity.getHolding()).isNull();
+        assertThat(entity.getCreatedAt()).isNull();
+        assertThat(entity.getUpdatedAt()).isNull();
     }
 }
