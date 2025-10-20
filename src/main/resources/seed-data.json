@@ -1,155 +1,308 @@
 [
   {
-    "trade_date": "02/28/2025",
-    "ticker": "BNTX",
+    "trade_date": "10/10/2025",
+    "ticker": "CCCX",
     "transaction_type": "Sell",
-    "quantity": 1,
-    "price_per_unit": 105.46,
+    "quantity": 1.0,
+    "price_per_unit": 24.38,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/28/2025",
-    "ticker": "VOO",
+    "trade_date": "10/10/2025",
+    "ticker": "CCCX",
     "transaction_type": "Buy",
-    "quantity": 7,
-    "price_per_unit": 538.00,
+    "quantity": 10.0,
+    "price_per_unit": 24.0,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "09/25/2025",
+    "ticker": "NET",
+    "transaction_type": "Sell",
+    "quantity": 3.0,
+    "price_per_unit": 213.23,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "09/23/2025",
+    "ticker": "IWM",
+    "transaction_type": "Sell",
+    "quantity": 3.0,
+    "price_per_unit": 247.0,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "08/20/2025",
+    "ticker": "NVDA",
+    "transaction_type": "Sell",
+    "quantity": 3.0,
+    "price_per_unit": 173.5135,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "08/13/2025",
+    "ticker": "NET",
+    "transaction_type": "Buy",
+    "quantity": 3.0,
+    "price_per_unit": 196.5,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "08/11/2025",
+    "ticker": "SPY",
+    "transaction_type": "Buy",
+    "quantity": 5.0,
+    "price_per_unit": 636.958,
     "owner": "Joint",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/26/2025",
-    "ticker": "TSLA",
-    "transaction_type": "Buy",
-    "quantity": 1,
-    "price_per_unit": 305,
+    "trade_date": "08/01/2025",
+    "ticker": "AMZN",
+    "transaction_type": "Sell",
+    "quantity": 2.0,
+    "price_per_unit": 217.13,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/26/2025",
+    "trade_date": "07/31/2025",
+    "ticker": "PDD",
+    "transaction_type": "Sell",
+    "quantity": 7.0,
+    "price_per_unit": 111.78,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "07/30/2025",
+    "ticker": "PANW",
+    "transaction_type": "Sell",
+    "quantity": 2.0,
+    "price_per_unit": 179.08,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "07/24/2025",
+    "ticker": "PDD",
+    "transaction_type": "Buy",
+    "quantity": 7.0,
+    "price_per_unit": 119.13,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "07/24/2025",
+    "ticker": "PANW",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": 198.68,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "07/24/2025",
+    "ticker": "SERV",
+    "transaction_type": "Buy",
+    "quantity": 50.0,
+    "price_per_unit": 11.6,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "07/11/2025",
+    "ticker": "FTNT",
+    "transaction_type": "Sell",
+    "quantity": 5.0,
+    "price_per_unit": 98.93,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "06/27/2025",
     "ticker": "AMZN",
     "transaction_type": "Buy",
-    "quantity": 2,
-    "price_per_unit": 214.87,
+    "quantity": 2.0,
+    "price_per_unit": 216.93,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/26/2025",
-    "ticker": "SPY",
+    "trade_date": "06/27/2025",
+    "ticker": "FTNT",
     "transaction_type": "Buy",
-    "quantity": 7,
-    "price_per_unit": 596.70,
+    "quantity": 5.0,
+    "price_per_unit": 103.38,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "06/25/2025",
+    "ticker": "LEU",
+    "transaction_type": "Sell",
+    "quantity": 3.0,
+    "price_per_unit": 185.645,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "06/11/2025",
+    "ticker": "TSLA",
+    "transaction_type": "Buy",
+    "quantity": 1.0,
+    "price_per_unit": 328.21,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "06/09/2025",
+    "ticker": "TSLA",
+    "transaction_type": "Sell",
+    "quantity": 1.0,
+    "price_per_unit": 285.61,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "06/06/2025",
+    "ticker": "TSLA",
+    "transaction_type": "Buy",
+    "quantity": 1.0,
+    "price_per_unit": 297.7,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "06/05/2025",
+    "ticker": "PLTR",
+    "transaction_type": "Sell",
+    "quantity": 3.0,
+    "price_per_unit": 124.31,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "06/04/2025",
+    "ticker": "PLTR",
+    "transaction_type": "Buy",
+    "quantity": 3.0,
+    "price_per_unit": 129.74,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "05/30/2025",
+    "ticker": "TSLA",
+    "transaction_type": "Sell",
+    "quantity": 1.0,
+    "price_per_unit": 346.89,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "05/28/2025",
+    "ticker": "NVDA",
+    "transaction_type": "Buy",
+    "quantity": 3.0,
+    "price_per_unit": 135.3,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "05/23/2025",
+    "ticker": "NVDA",
+    "transaction_type": "Sell",
+    "quantity": 3.0,
+    "price_per_unit": 129.2715,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "05/02/2025",
+    "ticker": "VGK",
+    "transaction_type": "Sell",
+    "quantity": 8.0,
+    "price_per_unit": 74.185,
     "owner": "Joint",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/25/2025",
-    "ticker": "SOXX",
-    "transaction_type": "Sell",
-    "quantity": 1,
-    "price_per_unit": 213.59,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "02/25/2025",
-    "ticker": "NVDA",
-    "transaction_type": "Sell",
-    "quantity": 2,
-    "price_per_unit": 129.87,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "02/25/2025",
-    "ticker": "NVDA",
-    "transaction_type": "Sell",
-    "quantity": 0.5,
-    "price_per_unit": 129.89,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "02/21/2025",
-    "ticker": "BNTX",
+    "trade_date": "04/29/2025",
+    "ticker": "BTCT",
     "transaction_type": "Buy",
-    "quantity": 1,
-    "price_per_unit": 119.20,
+    "quantity": 2.0,
+    "price_per_unit": 4.0,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/21/2025",
-    "ticker": "CRM",
+    "trade_date": "04/25/2025",
+    "ticker": "BTCT",
     "transaction_type": "Sell",
-    "quantity": 0.5,
-    "price_per_unit": 316.00,
+    "quantity": 2.0,
+    "price_per_unit": 4.21,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "02/10/2025",
-    "ticker": "TSLA",
-    "transaction_type": "Buy",
-    "quantity": 1,
-    "price_per_unit": 351.50,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "02/10/2025",
-    "ticker": "TSLA",
-    "transaction_type": "Sell",
-    "quantity": 1,
-    "price_per_unit": 345.59,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "01/27/2025",
-    "ticker": "NVDA",
-    "transaction_type": "Buy",
-    "quantity": 2,
-    "price_per_unit": 126.59,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "01/27/2025",
-    "ticker": "NVDA",
-    "transaction_type": "Buy",
-    "quantity": 0.5,
-    "price_per_unit": 125.77,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "01/27/2025",
-    "ticker": "SOXX",
-    "transaction_type": "Buy",
-    "quantity": 1,
-    "price_per_unit": 218.67,
-    "owner": "Personal",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "01/24/2025",
+    "trade_date": "04/08/2025",
     "ticker": "SPY",
     "transaction_type": "Buy",
-    "quantity": 2.5,
-    "price_per_unit": 608.97,
+    "quantity": 27.0,
+    "price_per_unit": 490.0,
+    "owner": "Joint",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "04/07/2025",
+    "ticker": "LEU",
+    "transaction_type": "Buy",
+    "quantity": 3.0,
+    "price_per_unit": 58.0,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "01/24/2025",
-    "ticker": "CRM",
+    "trade_date": "04/07/2025",
+    "ticker": "NVDA",
     "transaction_type": "Buy",
-    "quantity": 0.5,
-    "price_per_unit": 332.62,
+    "quantity": 3.0,
+    "price_per_unit": 97.0,
     "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "03/31/2025",
+    "ticker": "AMZN",
+    "transaction_type": "Sell",
+    "quantity": 2.0,
+    "price_per_unit": 184.908,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "03/04/2025",
+    "ticker": "VGK",
+    "transaction_type": "Buy",
+    "quantity": 8.0,
+    "price_per_unit": 70.2,
+    "owner": "Joint",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "03/03/2025",
+    "ticker": "QQQ",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": 508.1,
+    "owner": "Joint",
     "source": "Interactive IL"
   },
   {
@@ -157,7 +310,7 @@
     "ticker": "SPY",
     "transaction_type": "Buy",
     "quantity": 2.0,
-    "price_per_unit": 594.50,
+    "price_per_unit": 594.5,
     "owner": "Joint",
     "source": "Interactive IL"
   },
@@ -172,100 +325,163 @@
   },
   {
     "trade_date": "03/03/2025",
-    "ticker": "QQQ",
-    "transaction_type": "Buy",
-    "quantity": 2.0,
-    "price_per_unit": 508.10,
-    "owner": "Joint",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "03/03/2025",
     "ticker": "TOPT",
     "transaction_type": "Buy",
     "quantity": 17.0,
-    "price_per_unit": 25.80,
+    "price_per_unit": 25.8,
     "owner": "Joint",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "03/05/2025",
-    "ticker": "VGK",
-    "transaction_type": "Buy",
-    "quantity": 8.0,
-    "price_per_unit": 70.20,
-    "owner": "Joint",
-    "source": "Interactive IL"
-  },
-  {
-    "trade_date": "03/31/2025",
-    "ticker": "AMZN",
+    "trade_date": "02/28/2025",
+    "ticker": "BNTX",
     "transaction_type": "Sell",
-    "quantity": 2.0,
-    "price_per_unit": 184.91,
+    "quantity": 1.0,
+    "price_per_unit": 105.46,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "04/07/2025",
-    "ticker": "LEU",
+    "trade_date": "02/28/2025",
+    "ticker": "VOO",
     "transaction_type": "Buy",
-    "quantity": 3.0,
-    "price_per_unit": 58.00,
-    "owner": "Personal",
+    "quantity": 7.0,
+    "price_per_unit": 538.0,
+    "owner": "Joint",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "04/07/2025",
-    "ticker": "NVDA",
+    "trade_date": "02/26/2025",
+    "ticker": "IWM",
     "transaction_type": "Buy",
-    "quantity": 3.0,
-    "price_per_unit": 97.00,
+    "quantity": 1.0,
+    "price_per_unit": 215.0,
+    "owner": "Joint",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "02/26/2025",
+    "ticker": "TSLA",
+    "transaction_type": "Buy",
+    "quantity": 1.0,
+    "price_per_unit": 305.0,
     "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "04/08/2025",
+    "trade_date": "02/26/2025",
     "ticker": "SPY",
     "transaction_type": "Buy",
-    "quantity": 27.0,
-    "price_per_unit": 490.00,
-    "owner": "Shachar",
+    "quantity": 7.0,
+    "price_per_unit": 596.7,
+    "owner": "Joint",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "02/26/2025",
+    "ticker": "AMZN",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": 214.87,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "02/25/2025",
+    "ticker": "SOXX",
+    "transaction_type": "Sell",
+    "quantity": 1.0,
+    "price_per_unit": 213.59,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "02/25/2025",
+    "ticker": "NVDA",
+    "transaction_type": "Sell",
+    "quantity": 2.5,
+    "price_per_unit": 129.87,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "02/21/2025",
+    "ticker": "BNTX",
+    "transaction_type": "Buy",
+    "quantity": 1.0,
+    "price_per_unit": 119.2,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "02/21/2025",
+    "ticker": "CRM",
+    "transaction_type": "Sell",
+    "quantity": 0.5,
+    "price_per_unit": 316.0,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "02/11/2025",
+    "ticker": "TSLA",
+    "transaction_type": "Sell",
+    "quantity": 1.0,
+    "price_per_unit": 345.59,
+    "owner": "Personal",
     "source": "Interactive IL"
   },
   {
     "trade_date": "02/10/2025",
-    "ticker": "SPY",
+    "ticker": "TSLA",
     "transaction_type": "Buy",
-    "quantity": 1.12,
-    "price_per_unit": 604.57,
-    "owner": "Joint",
+    "quantity": 1.0,
+    "price_per_unit": 351.5,
+    "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "03/10/2025",
-    "ticker": "SPY",
+    "trade_date": "01/27/2025",
+    "ticker": "SOXX",
     "transaction_type": "Buy",
-    "quantity": 1.2,
-    "price_per_unit": 563.85,
-    "owner": "Joint",
+    "quantity": 1.0,
+    "price_per_unit": 218.67,
+    "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "04/10/2025",
-    "ticker": "SPY",
+    "trade_date": "01/27/2025",
+    "ticker": "NVDA",
     "transaction_type": "Buy",
-    "quantity": 1.29,
-    "price_per_unit": 523.63,
-    "owner": "Joint",
+    "quantity": 0.5,
+    "price_per_unit": 125.77,
+    "owner": "Personal",
     "source": "Interactive IL"
   },
   {
-    "trade_date": "05/02/2025",
-    "ticker": "VGK",
-    "transaction_type": "Sell",
-    "quantity": 8.0,
-    "price_per_unit": 74.19,
+    "trade_date": "01/27/2025",
+    "ticker": "NVDA",
+    "transaction_type": "Buy",
+    "quantity": 2.0,
+    "price_per_unit": 126.59,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "01/24/2025",
+    "ticker": "CRM",
+    "transaction_type": "Buy",
+    "quantity": 0.5,
+    "price_per_unit": 332.62,
+    "owner": "Personal",
+    "source": "Interactive IL"
+  },
+  {
+    "trade_date": "01/24/2025",
+    "ticker": "SPY",
+    "transaction_type": "Buy",
+    "quantity": 2.5,
+    "price_per_unit": 608.97,
     "owner": "Joint",
     "source": "Interactive IL"
   }
