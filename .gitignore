@@ -24,6 +24,7 @@ out/
 .env.*
 dev.env
 !.env.example
+!deploy/.env.example
 tradeflow-backend/.env
 tradeflow-backend/.env.*
 tradeflow-backend/dev.env
