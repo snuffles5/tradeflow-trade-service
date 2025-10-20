@@ -1,6 +1,5 @@
 package com.snuffles.tradeflow.service.provider;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
@@ -13,12 +12,19 @@ import java.util.Optional;
  */
 @Component
 @Primary
-@RequiredArgsConstructor
 @Slf4j
 public class CompositeMarketDataProvider implements MarketDataProvider {
 
-    private final @Qualifier("googleFinanceProvider") MarketDataProvider google;
-    private final @Qualifier("yahooMarketDataProvider") MarketDataProvider yahoo;
+    private final MarketDataProvider google;
+    private final MarketDataProvider yahoo;
+
+    public CompositeMarketDataProvider(
+        @Qualifier("googleFinanceProvider") MarketDataProvider google,
+        @Qualifier("yahooMarketDataProvider") MarketDataProvider yahoo
+    ) {
+        this.google = google;
+        this.yahoo = yahoo;
+    }
 
     @Override
     public Optional<ProviderQuote> getQuote(String ticker, Optional<String> marketHint) {
