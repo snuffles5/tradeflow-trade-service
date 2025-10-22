@@ -17,12 +17,13 @@ out/
 
 # IDE / Editor
 .idea/
-.vscode/
+vscode/
 
 # Environment files
 .env
 .env.*
 dev.env
+prod.env
 !.env.example
 tradeflow-backend/.env
 tradeflow-backend/.env.*

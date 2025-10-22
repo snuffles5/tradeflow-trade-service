@@ -1,0 +1,38 @@
+services:
+  api:
+    image: ghcr.io/snuffles5/tradeflow-trade-service:main
+    container_name: tradeflow-api
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-tradeflow}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASS}
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME:-tradeflow}?createDatabaseIfNotExist=true&sslMode=REQUIRED
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - SPRING_FLYWAY_ENABLED=true
+      - YAHOO_APP_ID=${YAHOO_APP_ID}
+      - YAHOO_CLIENT_ID=${YAHOO_CLIENT_ID}
+      - YAHOO_CLIENT_SECRET=${YAHOO_CLIENT_SECRET}
+      - YAHOO_REDIRECT_URI=${YAHOO_REDIRECT_URI}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  web:
+    image: ghcr.io/snuffles5/tradeflow-web-client:main
+    container_name: tradeflow-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
