@@ -11,6 +11,7 @@ import com.snuffles.tradeflow.service.exception.ValidationException;
 import com.snuffles.tradeflow.web.dto.TradeDto;
 import com.snuffles.tradeflow.web.mapper.TradeMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TradeService {
 
     private final TradeRepository tradeRepository;
@@ -28,6 +30,7 @@ public class TradeService {
 
     @Transactional
     public TradeDto createTrade(TradeDto tradeDto) {
+        log.debug("Creating trade for ticker {} with ownerId={} sourceId={}", tradeDto.getTicker(), tradeDto.getTradeOwnerId(), tradeDto.getTradeSourceId());
         TradeOwner owner = tradeOwnerRepository.findById(tradeDto.getTradeOwnerId())
             .orElseThrow(() -> new ResourceNotFoundException("TradeOwner not found"));
 
@@ -35,6 +38,7 @@ public class TradeService {
             .orElseThrow(() -> new ResourceNotFoundException("TradeSource not found"));
 
         if (!source.getOwners().contains(owner)) {
+            log.warn("Owner {} not associated with source {} when creating trade", owner.getId(), source.getId());
             throw new ValidationException("Owner not associated with source");
         }
 
@@ -45,14 +49,18 @@ public class TradeService {
         Trade savedTrade = tradeRepository.save(trade);
         holdingsService.processNewTrade(savedTrade);
 
+        log.info("Created trade {} for ticker {} (owner={}, source={})", savedTrade.getId(), savedTrade.getTicker(), owner.getId(), source.getId());
+
         return tradeMapper.toDto(savedTrade);
     }
 
     @Transactional(readOnly = true)
     public List<TradeDto> getAllTrades() {
-        return tradeRepository.findAll().stream()
+        List<TradeDto> trades = tradeRepository.findAll().stream()
             .map(tradeMapper::toDto)
             .toList();
+        log.debug("Fetched {} trades", trades.size());
+        return trades;
     }
 
     @Transactional
@@ -62,10 +70,12 @@ public class TradeService {
 
         tradeRepository.delete(trade);
         holdingsService.recalculateHolding(trade.getHolding().getId());
+        log.info("Deleted trade {} for ticker {} (holdingId={})", id, trade.getTicker(), trade.getHolding() != null ? trade.getHolding().getId() : null);
     }
 
     @Transactional
     public TradeDto updateTrade(Long id, TradeDto tradeDto) {
+        log.debug("Updating trade {} with new ticker {} ownerId={} sourceId={}", id, tradeDto.getTicker(), tradeDto.getTradeOwnerId(), tradeDto.getTradeSourceId());
         Trade trade = tradeRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Trade not found"));
 
@@ -84,6 +94,7 @@ public class TradeService {
             .orElseThrow(() -> new ResourceNotFoundException("TradeSource not found"));
 
         if (!source.getOwners().contains(owner)) {
+            log.warn("Owner {} not associated with source {} when updating trade {}", owner.getId(), source.getId(), id);
             throw new ValidationException("Owner not associated with source");
         }
 
@@ -100,6 +111,15 @@ public class TradeService {
         } else {
             holdingsService.recalculateHolding(updatedTrade.getHolding().getId());
         }
+
+        log.info(
+            "Updated trade {} for ticker {} (holdingChanged={}, owner={}, source={})",
+            updatedTrade.getId(),
+            updatedTrade.getTicker(),
+            holdingChanged,
+            owner.getId(),
+            source.getId()
+        );
 
         return tradeMapper.toDto(updatedTrade);
     }

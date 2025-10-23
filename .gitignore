@@ -17,16 +17,14 @@ out/
 
 # IDE / Editor
 .idea/
-.vscode/
+vscode/
 
 # Environment files
-.env
-.env.*
-dev.env
+.env.local
+.env.prod
+prod.env
 !.env.example
-tradeflow-backend/.env
-tradeflow-backend/.env.*
-tradeflow-backend/dev.env
+!config/.env.common
 
 # OS files
 .DS_Store

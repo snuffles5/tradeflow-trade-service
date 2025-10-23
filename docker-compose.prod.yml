@@ -1,0 +1,46 @@
+services:
+  api:
+    image: ghcr.io/snuffles5/tradeflow-trade-service:${API_IMAGE_TAG:-main}
+    container_name: tradeflow-api
+    restart: unless-stopped
+    env_file:
+      - config/.env.common
+      - .env.prod
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-tradeflow}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASS}
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME:-tradeflow}?createDatabaseIfNotExist=true&sslMode=REQUIRED
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASS}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - SPRING_FLYWAY_ENABLED=true
+      - YAHOO_APP_ID=${YAHOO_APP_ID}
+      - YAHOO_CLIENT_ID=${YAHOO_CLIENT_ID}
+      - YAHOO_CLIENT_SECRET=${YAHOO_CLIENT_SECRET}
+      - YAHOO_REDIRECT_URI=${YAHOO_REDIRECT_URI}
+    ports:
+      - "${API_PORT}:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9090/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  web:
+    image: ghcr.io/snuffles5/tradeflow-web-client:${WEB_IMAGE_TAG:-main}
+    container_name: tradeflow-web
+    restart: unless-stopped
+    env_file:
+      - config/.env.common
+      - .env.prod
+    environment:
+      - PUBLIC_API_URL=${PUBLIC_API_URL}
+    ports:
+      - "${WEB_PORT}:80"
+    depends_on:
+      api:
+        condition: service_healthy

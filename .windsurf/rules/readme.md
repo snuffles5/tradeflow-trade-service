@@ -1,7 +1,7 @@
 ---
-trigger: manual
-glob:
-description:
+trigger: always_on
+description: 
+globs: 
 ---
 
 # Windsurf Rules

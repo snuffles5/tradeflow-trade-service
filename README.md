@@ -10,9 +10,19 @@ This is the Spring Boot backend for the TradeFlow application.
 
 ## Getting Started
 
-1.  **Create a `.env` file**
+1.  **Configure environment files**
 
-    Copy the contents of `.env.example` to a new file named `.env` and fill in the values for your local environment. The sample file contains the database credentials required by `docker-compose.yml` and by Spring Boot when running locally without Docker.
+    Environment values are split into two parts:
+
+    - `config/.env.common` – tracked in Git, holds non-secret defaults (ports, Spring flags). No action required.
+    - `.env.local` – ignored by Git, holds local-only secrets (database credentials, API keys). Create it with:
+
+      ```bash
+      cp .env.example .env.local
+      # then edit .env.local with your local credentials
+      ```
+
+    Docker Compose automatically loads `config/.env.common` and `.env.local` so both application and database containers receive the correct values when developing locally.
 
 2.  **Build the application**
 
@@ -67,8 +77,8 @@ mvn test
 
 2.  **GitHub Actions workflows**
 
-    * __`docker-build.yml`__ (`.github/workflows/docker-build.yml`) verifies that the Docker image builds successfully on pushes and pull requests.
-    * __`build-push.yml`__ (`.github/workflows/build-push.yml`) builds and pushes the image to GHCR on pushes to `main`, tags starting with `v`, or manual dispatches. Images are tagged automatically from branch, tag, and commit SHA metadata.
+    * __`docker-build.yml`__ (`.github/workflows/docker-build.yml`) verifies the Docker image builds successfully on pushes to `main` (or manual dispatch). It does **not** push an image.
+    * __`build-push.yml`__ (`.github/workflows/build-push.yml`) builds and pushes the image to GHCR on pushes to `main`, any `feature/**` or `hotfix/**` branch, version tags (`v*`), pull requests targeting `main`, or manual dispatch. Images are tagged automatically from branch names (slashes become hyphens), tags, pull-request numbers (`pr-<id>`), and commit SHAs.
 
 3.  **GHCR naming & authentication**
 
@@ -88,7 +98,37 @@ mvn test
     docker pull ghcr.io/<github-owner>/tradeflow-trade-service:<tag>
     ```
 
-    Replace `<github-owner>` with your GitHub username or organization and `<tag>` with the desired tag (branch, tag, or SHA).
+    Replace `<github-owner>` with your GitHub username or organization and `<tag>` with the desired tag (for example `main`, `feature-align-stock-provider-and-seed-data`, `pr-4`, or `sha-abcdef1`).
+
+5.  **Production environment configuration**
+
+    **Security best practices:**
+
+    * __Never commit production credentials__ to version control. `.env.local` and `.env.prod` remain untracked.
+    * Store production secrets securely (GitHub Actions secrets, password manager, or server-only files).
+    * Production deployments consume `config/.env.common` plus an auto-generated `.env.prod` that lives only on the VPS.
+
+    **Setup on production server (one-time):**
+
+    1.  Ensure `/opt/tradeflow` contains the repository, `config/.env.common`, and the updated `docker-compose.prod.yml`.
+    2.  Add the following GitHub Actions secrets so deployments can run unattended:
+       `VPS_HOST`, `VPS_USERNAME`, `VPS_SSH_KEY`, `GHCR_PAT`, `DB_*`, `YAHOO_*`, `PUBLIC_API_URL`, `API_PORT`, `WEB_PORT`.
+
+6.  **Deploying to production VPS**
+
+    **Deploying with GitHub Actions:**
+
+    The repository includes `.github/workflows/deploy-to-vps.yml`. To deploy:
+
+    1.  From GitHub, open the **Actions** tab → **Deploy to VPS** → **Run workflow**.
+    2.  Provide the desired `api_tag` / `web_tag` (for example `feature-align-stock-provider-and-seed-data` or `main`).
+    3.  The workflow will SSH to the VPS, regenerate `/opt/tradeflow/.env.prod` from the configured secrets, log in to GHCR, pull the new images, and restart the services.
+
+    **Troubleshooting:**
+
+    * View logs: `docker compose -f docker-compose.prod.yml logs -f api`
+    * Check current tags: `docker compose -f docker-compose.prod.yml ps` and `docker inspect --format='{{.Config.Image}}' tradeflow-api`
+    * Re-run the workflow with a stable tag to roll back if needed
 
 ## Rebuild & Reload Stack
 
@@ -125,4 +165,3 @@ If connection fails, verify the containers are up (`docker compose ps`) and no o
 * If the database already contains owners, seeding is skipped. To force reseeding, stop the stack and remove the database volume: `docker compose down -v && ./scripts/tflow-rebuild.sh`.
 * Adjust seed data by editing `seed-data.json`; keep dates in `MM/dd/yyyy` format.
 * For production deployments, gate the seeder behind an environment profile or disable it entirely.
-# tradeflow-trade-service

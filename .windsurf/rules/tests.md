@@ -1,7 +1,7 @@
 ---
-trigger: manual
-glob:
-description:
+trigger: always_on
+description: 
+globs: 
 ---
 
 * __Rules summary__  
@@ -13,4 +13,3 @@ description:
   After modifying code, run `tflow-rebuild` to execute:  
   1. `mvn clean verify`  
   2. `docker-compose up --build`
-

@@ -8,6 +8,7 @@ import com.snuffles.tradeflow.web.dto.HoldingsSummaryDto;
 import com.snuffles.tradeflow.web.dto.UnrealizedHoldingDto;
 import com.snuffles.tradeflow.web.mapper.UnrealizedHoldingMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class HoldingsService {
 
     private final UnrealizedHoldingRepository holdingRepository;
@@ -30,25 +32,51 @@ public class HoldingsService {
 
     @Transactional
     public void processNewTrade(Trade trade) {
+        log.debug(
+            "Processing new trade {} for ticker {} (owner={}, source={})",
+            trade.getId(),
+            trade.getTicker(),
+            trade.getOwner() != null ? trade.getOwner().getId() : null,
+            trade.getSource() != null ? trade.getSource().getId() : null
+        );
+
         UnrealizedHolding holding = holdingRepository.findByTickerAndOwnerIdAndSourceIdAndCloseDateIsNull(
             trade.getTicker(),
             trade.getOwner().getId(),
             trade.getSource().getId()
-        ).orElseGet(() -> createNewHolding(trade));
+        ).orElseGet(() -> {
+            UnrealizedHolding newHolding = createNewHolding(trade);
+            return holdingRepository.save(newHolding);
+        });
 
-        updateHoldingWithTrade(holding, trade);
         trade.setHolding(holding);
-        holdingRepository.save(holding);
+        updateHoldingWithTrade(holding, trade);
+
+        log.debug(
+            "Updated holding id={} for ticker {}: netQty={}, netCost={}, avgCost={}, latestPrice={}",
+            holding.getId(),
+            trade.getTicker(),
+            holding.getNetQuantity(),
+            holding.getNetCost(),
+            holding.getAverageCost(),
+            holding.getLatestTradePrice()
+        );
     }
 
     @Transactional
     public void recalculateHolding(Long holdingId) {
         UnrealizedHolding holding = holdingRepository.findById(holdingId).orElse(null);
-        if (holding == null) return;
+        if (holding == null) {
+            log.warn("Requested recalculation for missing holding id={}", holdingId);
+            return;
+        }
+
+        log.debug("Recalculating holding id={} for ticker {}", holdingId, holding.getTicker());
 
         List<Trade> trades = tradeRepository.findByHoldingIdOrderByTradeDateAsc(holdingId);
 
         if (trades.isEmpty()) {
+            log.info("No trades remain for holding id={}; deleting", holdingId);
             holdingRepository.delete(holding);
             return;
         }
@@ -66,6 +94,12 @@ public class HoldingsService {
         holding.setSource(trade.getSource());
         holding.setOpenDate(toUtcDate(trade.getTradeDate()));
         resetHolding(holding);
+        log.debug(
+            "Created new holding draft for ticker {} (owner={}, source={})",
+            trade.getTicker(),
+            trade.getOwner() != null ? trade.getOwner().getId() : null,
+            trade.getSource() != null ? trade.getSource().getId() : null
+        );
         return holding;
     }
 
@@ -80,6 +114,7 @@ public class HoldingsService {
         holding.setRealizedPnl(null);
         holding.setRealizedPnlPercentage(null);
         holding.setCloseDate(null);
+        log.trace("Reset holding state for ticker {}", holding.getTicker());
     }
 
     private void updateHoldingWithTrade(UnrealizedHolding holding, Trade trade) {
@@ -113,14 +148,31 @@ public class HoldingsService {
                 BigDecimal pnlPercentage = realizedPnl.divide(holding.getTotalBuyCost(), 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
                 holding.setRealizedPnlPercentage(pnlPercentage);
             }
+            log.debug(
+                "Holding for ticker {} closed on {} with realizedPnL={} ({}%)",
+                trade.getTicker(),
+                holding.getCloseDate(),
+                holding.getRealizedPnl(),
+                holding.getRealizedPnlPercentage()
+            );
+        } else {
+            log.trace(
+                "Holding for ticker {} updated: netQty={}, avgCost={}, latestPrice={}",
+                trade.getTicker(),
+                holding.getNetQuantity(),
+                holding.getAverageCost(),
+                holding.getLatestTradePrice()
+            );
         }
     }
 
     @Transactional(readOnly = true)
     public List<UnrealizedHoldingDto> getAllHoldings() {
-        return holdingRepository.findAll().stream()
+        List<UnrealizedHoldingDto> holdings = holdingRepository.findAll().stream()
             .map(this::toDto)
             .collect(Collectors.toList());
+        log.debug("Fetched {} holdings", holdings.size());
+        return holdings;
     }
 
     private UnrealizedHoldingDto toDto(UnrealizedHolding holding) {
@@ -145,6 +197,7 @@ public class HoldingsService {
             totalNetCost = totalNetCost.add(dto.getNetCost());
         }
 
+        log.debug("Computed holdings summary with {} groups and total net cost {}", breakdown.size(), totalNetCost);
         return new HoldingsSummaryDto(new HoldingsSummaryDto.OverallSummaryDto(totalNetCost), breakdown);
     }
 

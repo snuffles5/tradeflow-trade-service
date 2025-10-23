@@ -2,8 +2,10 @@ package com.snuffles.tradeflow;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.retry.annotation.EnableRetry;
 
 @SpringBootApplication
+@EnableRetry
 public class TradeflowApplication {
 
 	public static void main(String[] args) {
