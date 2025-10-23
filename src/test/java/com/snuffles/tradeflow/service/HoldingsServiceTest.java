@@ -97,7 +97,6 @@ class HoldingsServiceTest {
 
         given(holdingRepository.findByTickerAndOwnerIdAndSourceIdAndCloseDateIsNull("AAPL", 1L, 2L))
             .willReturn(Optional.of(existing));
-        given(holdingRepository.save(existing)).willReturn(existing);
 
         holdingsService.processNewTrade(trade);
 

@@ -44,22 +44,17 @@ public class HoldingsService {
             trade.getTicker(),
             trade.getOwner().getId(),
             trade.getSource().getId()
-        ).orElseGet(() -> createNewHolding(trade));
+        ).orElseGet(() -> {
+            UnrealizedHolding newHolding = createNewHolding(trade);
+            return holdingRepository.save(newHolding);
+        });
 
-        boolean newHolding = holding.getId() == null;
-        log.debug(
-            "Using {} holding{} for ticker {}",
-            newHolding ? "new" : "existing",
-            newHolding ? "" : " id=" + holding.getId(),
-            trade.getTicker()
-        );
-
-        updateHoldingWithTrade(holding, trade);
         trade.setHolding(holding);
-        holdingRepository.save(holding);
+        updateHoldingWithTrade(holding, trade);
+
         log.debug(
-            "Updated holding{} for ticker {}: netQty={}, netCost={}, avgCost={}, latestPrice={}",
-            holding.getId() != null ? " id=" + holding.getId() : "",
+            "Updated holding id={} for ticker {}: netQty={}, netCost={}, avgCost={}, latestPrice={}",
+            holding.getId(),
             trade.getTicker(),
             holding.getNetQuantity(),
             holding.getNetCost(),
