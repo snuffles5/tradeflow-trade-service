@@ -10,9 +10,19 @@ This is the Spring Boot backend for the TradeFlow application.
 
 ## Getting Started
 
-1.  **Create a `.env` file**
+1.  **Configure environment files**
 
-    Copy the contents of `.env.example` to a new file named `.env` and fill in the values for your local environment. The sample file contains the database credentials required by `docker-compose.yml` and by Spring Boot when running locally without Docker.
+    Environment values are split into two parts:
+
+    - `config/.env.common` – tracked in Git, holds non-secret defaults (ports, Spring flags). No action required.
+    - `.env.local` – ignored by Git, holds local-only secrets (database credentials, API keys). Create it with:
+
+      ```bash
+      cp .env.example .env.local
+      # then edit .env.local with your local credentials
+      ```
+
+    Docker Compose automatically loads `config/.env.common` and `.env.local` so both application and database containers receive the correct values when developing locally.
 
 2.  **Build the application**
 
@@ -94,89 +104,31 @@ mvn test
 
     **Security best practices:**
 
-    * __Never commit production credentials__ to version control. The `.env.*` and `prod.env` patterns are already in `.gitignore`.
-    * Store production secrets securely (e.g., password manager, secrets management service, or server-only files).
-    * Use separate `.env.prod` files on each environment (local staging, production VPS, etc.).
+    * __Never commit production credentials__ to version control. `.env.local` and `.env.prod` remain untracked.
+    * Store production secrets securely (GitHub Actions secrets, password manager, or server-only files).
+    * Production deployments consume `config/.env.common` plus an auto-generated `.env.prod` that lives only on the VPS.
 
-    **Setup on production server:**
+    **Setup on production server (one-time):**
 
-    1.  Copy `.env.prod` template to the server and fill in actual values:
-
-        ```bash
-        # On your local machine
-        scp .env.prod user@your-server:/opt/tradeflow/.env.prod
-        
-        # Then SSH to server and edit
-        ssh user@your-server
-        cd /opt/tradeflow
-        nano .env.prod  # Fill in real DB credentials, API keys, etc.
-        ```
-
-    2.  Ensure `docker-compose.prod.yml` is present on the server.
+    1.  Ensure `/opt/tradeflow` contains the repository, `config/.env.common`, and the updated `docker-compose.prod.yml`.
+    2.  Add the following GitHub Actions secrets so deployments can run unattended:
+       `VPS_HOST`, `VPS_USERNAME`, `VPS_SSH_KEY`, `GHCR_PAT`, `DB_*`, `YAHOO_*`, `PUBLIC_API_URL`, `API_PORT`, `WEB_PORT`.
 
 6.  **Deploying to production VPS**
 
-    **Initial setup (one-time):**
+    **Deploying with GitHub Actions:**
 
-    ```bash
-    # On the VPS
-    cd /opt/tradeflow
-    
-    # Authenticate with GHCR (token needs read:packages scope)
-    echo YOUR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
-    ```
+    The repository includes `.github/workflows/deploy-to-vps.yml`. To deploy:
 
-    **Full deployment workflow (switching branches/versions):**
-
-    1.  **Update the image tag** in `/opt/tradeflow/.env.prod`:
-
-        ```bash
-        # Edit .env.prod and change:
-        API_IMAGE_TAG=feature-align-stock-provider-and-seed-data
-        # or
-        API_IMAGE_TAG=main
-        # or
-        API_IMAGE_TAG=sha-abcdef1
-        ```
-
-    2.  **Pull the new image:**
-
-        ```bash
-        docker compose -f docker-compose.prod.yml pull api
-        ```
-
-    3.  **Recreate the service:**
-
-        ```bash
-        docker compose -f docker-compose.prod.yml up -d --force-recreate api
-        ```
-
-    4.  **Verify deployment:**
-
-        ```bash
-        # Check service status
-        docker compose -f docker-compose.prod.yml ps
-        
-        # View logs
-        docker compose -f docker-compose.prod.yml logs -f api
-        
-        # Confirm running image tag
-        docker inspect --format='{{.Config.Image}}' tradeflow-api
-        ```
-
-    **Quick branch switch (alternative method):**
-
-    Instead of editing `.env.prod`, you can override the tag inline:
-
-    ```bash
-    API_IMAGE_TAG=feature-my-branch docker compose -f docker-compose.prod.yml up -d --force-recreate api
-    ```
+    1.  From GitHub, open the **Actions** tab → **Deploy to VPS** → **Run workflow**.
+    2.  Provide the desired `api_tag` / `web_tag` (for example `feature-align-stock-provider-and-seed-data` or `main`).
+    3.  The workflow will SSH to the VPS, regenerate `/opt/tradeflow/.env.prod` from the configured secrets, log in to GHCR, pull the new images, and restart the services.
 
     **Troubleshooting:**
 
-    * If the healthcheck fails, inspect logs: `docker compose -f docker-compose.prod.yml logs -f api`
-    * Common issues: missing environment variables, database connection failures, incorrect API keys
-    * Rollback by changing `API_IMAGE_TAG` back to a known-good version and redeploying
+    * View logs: `docker compose -f docker-compose.prod.yml logs -f api`
+    * Check current tags: `docker compose -f docker-compose.prod.yml ps` and `docker inspect --format='{{.Config.Image}}' tradeflow-api`
+    * Re-run the workflow with a stable tag to roll back if needed
 
 ## Rebuild & Reload Stack
 
